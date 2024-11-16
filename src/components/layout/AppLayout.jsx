@@ -6,11 +6,9 @@ const ErrorLayout = lazy(() => import('./ErrorLayout'));
 
 /**
  * @param {object} props
- * @param {import('@/Route').PageComponent} props.component
- * @param {import('@/Route').PageComponentProps} props.componentProps
+ * @param {import('preact').VNode<any>} props.children
  */
 const Layout = (props) => {
-  const { component: Page, componentProps } = props;
   // You can add logging inside useErrorBoundary()
   const [error] = useErrorBoundary((err) => console.error(err));
 
@@ -32,7 +30,7 @@ const Layout = (props) => {
   }
 
   // Your layout can be much more complex than this. Don't you want a side menu?
-  return <Page {...componentProps} />;
+  return props.children;
 };
 
 export default Layout;

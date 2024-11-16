@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { publicURLPath } from './paths.js'
 import http from 'node:http';
+import https from 'node:https';
 import http2 from 'node:http2';
 // eslint-disable-next-line import-x/extensions
 import { exec as preactIsoUrlPatternMatch } from 'preact-iso/router'
@@ -18,6 +19,7 @@ const rootDir = __dirname;
 const isProduction = process.env.NODE_ENV === 'production';
 const HTTP2 = process.env.HTTP2 === 'true' || !isProduction;
 const PORT = process.env.PORT || 5173;
+const HMR_PORT = 5174;
 
 const devKeyPath = path.resolve(rootDir, 'certs/local.key');
 const devCertPath = path.resolve(rootDir, 'certs/local.crt');
@@ -35,13 +37,19 @@ let fastifyHandler;
 const server = HTTP2
   ? http2.createSecureServer({
     key: fs.readFileSync(devKeyPath, 'utf8'),
-    cert: fs.readFileSync(devCertPath, 'utf8')
-  }, (req, res) => {
-    fastifyHandler(req, res);
-  })
-  : http.createServer((req, res) => {
-    fastifyHandler(req, res);
-  });
+    cert: fs.readFileSync(devCertPath, 'utf8'),
+  }, (...args) => fastifyHandler(...args))
+  : http.createServer((...args) => fastifyHandler(...args));
+// On dev, when using HTTP2, we need to create a separate HTTPS+HTTP1 server for HMR to work
+const hmrServer = !isProduction ? (
+  HTTP2
+    ? https.createServer({
+      key: fs.readFileSync(devKeyPath, 'utf8'),
+      cert: fs.readFileSync(devCertPath, 'utf8'),
+    }, (...args) => fastifyHandler(...args))
+    : server
+) : undefined;
+
 const fastify = Fastify({
   ...(HTTP2 ? {
     http2: true,
@@ -67,7 +75,11 @@ if (!isProduction) {
     server: {
       middlewareMode: true,
       hmr: {
-        server,
+        server: hmrServer,
+        host,
+        port: HMR_PORT,
+        protocol: HTTP2 ? 'wss' : 'ws',
+        clientPort: HMR_PORT,
       }
     },
     appType: 'custom',
@@ -88,9 +100,25 @@ if (!isProduction) {
   viteProdManifest = JSON.parse(fs.readFileSync(path.resolve(rootDir, 'dist/.vite/manifest.json'), 'utf-8'))
 }
 
-fastify.all('*', async (request, reply) => {
+function getInlinePrefetchCode(getPrefetchUrlsFuncCode) {
+  return `<script>(window.prefetchUrlsPromise = Promise.resolve((${getPrefetchUrlsFuncCode})())).then(m=>Object.entries(m).forEach(([,u])=>{
+    let d=document.createElement('link')
+    d.rel='preload'
+    d.as='fetch'
+    d.crossOrigin='anonymous'
+    d.href=u
+    document.head.appendChild(d)
+  }))</script>`
+}
+
+// eslint-disable-next-line prefer-arrow-callback
+fastify.get('/api/test', async function getTestData() {
+  return { test: 'test' };
+})
+
+fastify.all('*', async (req, reply) => {
   try {
-    const url = request.url;
+    const url = req.url;
 
     let template
     let html;
@@ -101,11 +129,13 @@ fastify.all('*', async (request, reply) => {
       html = template.replace('<!-- ssr-head-placeholder -->', '')
     } else {
       template = fs.readFileSync(path.resolve(rootDir, 'dist/index.html'), 'utf-8')
-      const { pathname } = new URL(request.url, 'http://localhost:5173');
+      const { pathname } = new URL(req.url, 'http://localhost:5173');
       // TODO: preload mode JS and add fetches
       const {
         title,
-        Component: entryFileName
+        Component: entryFileName,
+        preload,
+        getPrefetchUrls: getPrefetchUrlsFuncCode,
       } = clientSideManagedRoutes.find((route) => preactIsoUrlPatternMatch(pathname, route.path, { params: {} })) || {};
       const manifestEntry = viteProdManifest[entryFileName];
       const preloadJS = (manifestEntry?.imports || [])
@@ -117,9 +147,13 @@ fastify.all('*', async (request, reply) => {
       html = template.replace('<!-- ssr-head-placeholder -->', [
         title ? `<title>${title}</title>` : '',
         ...preloadJS.map((js) => `  <link rel="modulepreload" crossorigin href="${js}">`),
+        getPrefetchUrlsFuncCode ? getInlinePrefetchCode(getPrefetchUrlsFuncCode) : '',
       ].join('\n'))
-      const stylesheetTags = preloadCSS.map((css) => `  <link rel="stylesheet" crossorigin href="${css}">`).join('\n');
-      html = html.replace('</head>', `${stylesheetTags}\n</head>`);
+      const endTags = [
+        ...preloadCSS.map((css) => `  <link rel="stylesheet" crossorigin href="${css}">`),
+        ...(preload ? preload.map(({ as, href }) => `  <link rel="preload" as="${as}" crossorigin href="${href}">`) : []),
+      ].join('\n');
+      html = html.replace('</head>', `${endTags}\n</head>`);
     }
 
     reply.code(200).header('Content-Type', 'text/html').send(html)
@@ -130,7 +164,13 @@ fastify.all('*', async (request, reply) => {
   }
 })
 
+if (hmrServer) {
+  hmrServer.listen(HMR_PORT, host, () => {
+    console.log(`HMR server listening on ${HTTP2 ? 'https' : 'http'}://${host}:${HMR_PORT}`);
+  });
+}
+
 fastify.listen({ port: PORT, host }, (err) => {
   if (err) throw err
-  console.log(`Listening on ${HTTP2 ? 'https' : 'http'}://${host}:${PORT}`)
+  console.log(`Server listening on ${HTTP2 ? 'https' : 'http'}://${host}:${PORT}`)
 })

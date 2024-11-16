@@ -17,6 +17,7 @@
     "@fastify/compress": "^8.0.1",
     "@fastify/middie": "^9.0.2",
     "@fastify/static": "^8.0.2",
+    "@preact/signals": "^1.3.0",
     "fastify": "^5.0.0",
     "preact": "^10.24.2",
     "preact-iso": "^2.6.3"
@@ -33,6 +34,7 @@
     "eslint-plugin-css-modules": "^2.12.0",
     "eslint-plugin-import-x": "^4.3.1",
     "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-no-closure": "^1.0.1",
     "playwright": "^1.45.2",
     "prettier": "^3.2.5",
     "rollup-plugin-visualizer": "^5.12.0",
@@ -56,9 +58,14 @@
     ],
     "plugins": [
       "jsx-a11y",
-      "css-modules"
+      "css-modules",
+      "no-closure"
     ],
+    "env": {
+      "browser": true
+    },
     "rules": {
+      "no-closure/no-tagged-closures": "error",
       "import-x/extensions": [
         "error",
         {

@@ -35,17 +35,29 @@ export default defineConfig({
       async closeBundle() {
         const routeDir = path.resolve(__dirname, './src/routes');
         let routesFile = fs.readFileSync(path.resolve(routeDir, 'routes.js'), 'utf-8');
-        routesFile = routesFile.replace(/lazy\s*\(\s*\(\s*\)\s*=>\s*import\s*\(\s*(.+)\s*\)\s*\)\s*,?/g, '$1');
+        routesFile = routesFile.replace(/lazy\s*\(\s*\(\s*\)\s*=>\s*import\s*\(\s*(.+)\s*\)\s*\)\s*(,?)/g, '$1$2');
         // console.log(routesFile)
         const fileName = path.resolve(__dirname, 'routes-temp.js')
         fs.writeFileSync(fileName, routesFile, 'utf-8');
         const routes = (await import(fileName)).default;
         fs.unlinkSync(fileName);
-        const routeInfo = routes.map((route) => ({
-          path: route.path,
-          title: typeof route.title === 'string' ? route.title : null,
-          Component: path.relative(__dirname, path.resolve(routeDir, `${route.Component}.jsx`)),
-        }));
+        const routeInfo = routes.map((route) => {
+          let func = route.getPrefetchUrls?.toString?.();
+          if (func) {
+            if (func.startsWith('getPrefetchUrls')) {
+              func = `function ${func}`;
+            } else if (func.startsWith('async getPrefetchUrls')) {
+              func = `async function ${func.slice(6)}`;
+            }
+          }
+          return {
+            path: route.path,
+            title: typeof route.title === 'string' ? route.title : null,
+            Component: path.relative(__dirname, path.resolve(routeDir, `${route.Component}.jsx`)),
+            preload: route.preload,
+            getPrefetchUrls: func,
+          };
+        });
         // console.log(routeInfo);
         fs.writeFileSync(
           path.resolve(__dirname, 'dist/routes.json'),

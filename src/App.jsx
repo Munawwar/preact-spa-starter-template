@@ -5,15 +5,27 @@ import routes from './routes/routes';
 import redirects from './routes/redirects';
 
 /**
+ * @template {string} T
  * @param {object} props
- * @param {import('@/Route').Route} props.route
+ * @param {import('@/Route').Route<T>} props.route
  * @param {string} props.path
  * @param {boolean} [props.default]
  */
 const RouteComponent = (props) => {
   const { route } = props;
+  const { Component, getPrefetchUrls } = route;
   const { params, query } = useRoute();
   const { url } = useLocation();
+
+  /** @type {Promise<{ [key: string]: string }>|undefined} */
+  let prefetchUrlsPromise;
+  if (window.prefetchUrlsPromise) {
+    prefetchUrlsPromise = window.prefetchUrlsPromise;
+    // @ts-ignore
+    delete window.prefetchUrlsPromise;
+  } else if (getPrefetchUrls) {
+    prefetchUrlsPromise = Promise.resolve(getPrefetchUrls());
+  }
 
   const title =
     typeof route.title === 'function'
@@ -24,23 +36,25 @@ const RouteComponent = (props) => {
   }, []);
 
   return (
-    <Layout
-      component={route.Component}
-      componentProps={{
+    <Layout>
+      <Component
         // route metadata
-        routeId: route.routeId,
-        path: route.path,
-        default: route.default,
-        title,
+        routeId={route.routeId}
+        title={title}
+        path={route.path}
+        default={route.default}
+        getPrefetchUrls={getPrefetchUrls}
+        prefetchUrlsPromise={prefetchUrlsPromise}
         // preact router props
-        url,
-        params,
-        query,
-      }}
-    />
+        url={url}
+        params={params}
+        query={query}
+      />
+    </Layout>
   );
 };
 
+// FIXME: Redirects needs to be handled both by server (first page load) and client (subsequent navigation)
 function RedirectionManager() {
   const { path, route } = useLocation();
   useLayoutEffect(() => {
@@ -59,7 +73,13 @@ function App() {
       <ErrorBoundary>
         <Router>
           {routes.map((route) => (
-            <RouteComponent key={route.path} path={route.path} route={route} default={route.default} />
+            <RouteComponent
+              key={route.path}
+              path={route.path}
+              // @ts-ignore
+              route={route}
+              default={route.default}
+            />
           ))}
         </Router>
       </ErrorBoundary>
