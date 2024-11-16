@@ -3,7 +3,8 @@ import svgUrl from '../third-party/illustrations/well-done.svg';
 import styles from './Home.module.css';
 
 /**
- * @param {import('@/Route').PageComponentProps<'/' | '/user/:id'>} props
+ * @template {'/' | '/user/:id'} T
+ * @param {import('@/Route').PageComponentProps<T>} props
  */
 function Home(props) {
   const { data, error, loading } = useFetch(

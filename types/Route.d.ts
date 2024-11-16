@@ -14,37 +14,42 @@ type PreactIsoUrlPatternMatch<Re extends string> = Re extends ''
           ? PreactIsoUrlPatternMatch<rest>
           : { params: {} };
 
-export type PageComponentProps<T extends string> = {
+export type RouteStaticProps<T extends string> = {
   /** Route pattern as defined in 'src/routes/routes.js'. e.g. '/user/:id' */
   path: T;
 } & {
   /** Route ID as defined in 'src/routes/routes.js' */
   routeId: string;
-  /** Page title as defined in 'src/routes/routes.js' */
-  title: string;
   /** Set to true if the current route was set as the default route on preact-iso router. This is as defined in 'src/routes/routes.js' */
   default?: boolean;
+};
+
+export type PageComponentBaseProps<T extends string> = RouteStaticProps<T> & {
   /** URL from preact-iso useLocation() hook. It is part of the URI without origin and URI fragment. e.g '/user/123?tab=subscription' */
   url: string;
   /** params from preact-iso useRoute() hook. e.g { id: '123' } */
   params: PreactIsoUrlPatternMatch<T>['params'];
   /** query from preact-iso useRoute() hook. e.g { tab: 'subscription' } */
   query: Record<string, string>;
+};
+
+export type PageComponentProps<T extends string> = PageComponentBaseProps<T> & {
+  /** Page title as defined in 'src/routes/routes.js' */
+  title: string;
   /** Same getPrefetchUrls function defined in 'src/routes/routes.js' */
-  getPrefetchUrls?: () => { [key: string]: string } | Promise<{ [key: string]: string }>;
+  getPrefetchUrls?: (
+    param: PageComponentBaseProps<T>,
+  ) => { [key: string]: string } | Promise<{ [key: string]: string }>;
   /**
    * URLs that were already requested to be prefetched by the inline bootstrapping
-   * JS using the getPrefetchUrls function
+   * JS using the getPrefetchUrls function.
    */
   prefetchUrlsPromise?: Promise<{ [key: string]: string }>;
 };
 
-export type Route<T extends string> = {
-  routeId: string;
+export type Route<T extends string> = RouteStaticProps<T> & {
   title: string | ((props: object) => string);
-  path: T;
   Component: (props: PageComponentProps<T>) => import('preact/jsx-runtime').JSX.Element | null;
-  default?: boolean;
   /**
    * Static preload links that will be inlined into HTML head tag.
    *
@@ -57,11 +62,18 @@ export type Route<T extends string> = {
   }[];
   /**
    * Function that gets inlined into HTML head tag, that allows you to preload fetch() calls,
-   * and can use browser globals like localStorage etc.
+   * and can use browser globals like localStorage etc. prefetching logic only adds a link
+   * rel=preload tag, and doesn't actually do the fetch() calls. You need to do the actual
+   * fetch() calls later yourself in your code.
    *
-   * Due to the nature of inlining of code into head tag, JS closures (references to any imports in this file)
-   * are not allowed.
-   * Async code is supported but try not to use anything async as that will delay the prefetching.
+   * The function needs to finally return a map from a string key to the final URL to be
+   * preloaded. You can later use the key for mapping from a stable name to dynamic URL.
+   * e.g. { 'search': '/api/search/123?q=dynamic-query' }
+   * This is useful when doing the actual fetch() calls later in your code.
+   *
+   * Due to the nature of inlining of code into head tag, JS closures (references to any
+   * variables outside of the function) are not allowed, with exception of browser globals.
+   * Async code is supported, but try not to use async, as that will delay the prefetching.
    * Also keep this function as short a possible, as it not going to be minified.
    *
    * Even though "prefetching" uses link rel="preload" tags, they have lower priority

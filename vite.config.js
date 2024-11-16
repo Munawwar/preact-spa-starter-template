@@ -51,9 +51,11 @@ export default defineConfig({
             }
           }
           return {
+            routeId: route.routeId,
             path: route.path,
             title: typeof route.title === 'string' ? route.title : null,
             Component: path.relative(__dirname, path.resolve(routeDir, `${route.Component}.jsx`)),
+            default: route.default,
             preload: route.preload,
             getPrefetchUrls: func,
           };

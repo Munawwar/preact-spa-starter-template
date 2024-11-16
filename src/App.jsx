@@ -7,8 +7,8 @@ import redirects from './routes/redirects';
 /**
  * @template {string} T
  * @param {object} props
+ * @param {T} props.path
  * @param {import('@/Route').Route<T>} props.route
- * @param {string} props.path
  * @param {boolean} [props.default]
  */
 const RouteComponent = (props) => {
@@ -24,7 +24,16 @@ const RouteComponent = (props) => {
     // @ts-ignore
     delete window.prefetchUrlsPromise;
   } else if (getPrefetchUrls) {
-    prefetchUrlsPromise = Promise.resolve(getPrefetchUrls());
+    prefetchUrlsPromise = Promise.resolve(
+      getPrefetchUrls({
+        url,
+        path: props.path,
+        params,
+        query,
+        default: route.default,
+        routeId: route.routeId,
+      }),
+    );
   }
 
   const title =
@@ -75,6 +84,7 @@ function App() {
           {routes.map((route) => (
             <RouteComponent
               key={route.path}
+              // @ts-ignore
               path={route.path}
               // @ts-ignore
               route={route}
