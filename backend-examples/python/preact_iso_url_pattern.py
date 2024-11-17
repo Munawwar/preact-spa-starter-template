@@ -1,6 +1,10 @@
 # Run program: python3 preact-iso-url-pattern.py
 
-def preact_iso_url_pattern_match(url, route):
+from urllib.parse import unquote
+def preact_iso_url_pattern_match(url, route, matches=None):
+    # Initialize matches object if not provided
+    if matches is None:
+        matches = {'params': {}}
     url = list(filter(None, url.split('/')))
     route = list(filter(None, (route or '').split('/')))
 
@@ -23,21 +27,35 @@ def preact_iso_url_pattern_match(url, route):
 
         # /foo/* match
         if not m and val and flag == '*':
+            # Store remaining path segments in rest
+            matches['rest'] = '/' + '/'.join(map(unquote, url[i:]))
             break
 
         # segment mismatch / missing required field:
         if not m or (not val and flag != '?' and flag != '*'):
-            return False
+            return None
 
         rest = flag in ('+', '*')
+
+        # rest (+/*) match:
+        if rest:
+            val = '/'.join(map(unquote, url[i:])) or None
+        # normal/optional field:
+        elif val:
+            val = unquote(val)
+
+        # Store parameter values in matches
+        matches['params'][param] = val
+        if param not in matches:
+            matches[param] = val
 
         if rest:
             break
 
-    return True
+    return matches
 
 # Example usage:
-# print(preact_iso_url_pattern_match("/foo/bar", "/foo/:param"))
+# print(preact_iso_url_pattern_match("/foo/bar%20baz", "/foo/:param"))
 # print(preact_iso_url_pattern_match("/foo/bar/baz", "/foo/*"))
 # print(preact_iso_url_pattern_match("/foo", "/foo/:param?"))
 # print(preact_iso_url_pattern_match("/foo/bar", "/bar/:param"))
