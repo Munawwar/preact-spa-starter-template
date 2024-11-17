@@ -6,13 +6,24 @@ import (
 	// "fmt"
 	"regexp"
 	"strings"
+	"net/url"
 )
 
-func preactIsoUrlPatternMatch(urlStr, route string) bool {
-	url := filterEmpty(strings.Split(urlStr, "/"))
+type Matches struct {
+	Params map[string]string `json:"params"`
+	Rest   string           `json:"rest,omitempty"`
+}
+
+func preactIsoUrlPatternMatch(urlStr, route string, matches *Matches) *Matches {
+	if matches == nil {
+		matches = &Matches{
+			Params: make(map[string]string),
+		}
+	}
+	urlParts := filterEmpty(strings.Split(urlStr, "/"))
 	routeParts := filterEmpty(strings.Split(route, "/"))
 
-	for i := 0; i < max(len(url), len(routeParts)); i++ {
+	for i := 0; i < max(len(urlParts), len(routeParts)); i++ {
 		var m, param, flag string
 		if i < len(routeParts) {
 			re := regexp.MustCompile(`^(:?)(.*?)([+*?]?)$`)
@@ -23,8 +34,8 @@ func preactIsoUrlPatternMatch(urlStr, route string) bool {
 		}
 
 		var val string
-		if i < len(url) {
-			val = url[i]
+		if i < len(urlParts) {
+			val = urlParts[i]
 		}
 
 		// segment match:
@@ -34,22 +45,39 @@ func preactIsoUrlPatternMatch(urlStr, route string) bool {
 
 		// /foo/* match
 		if m == "" && val != "" && flag == "*" {
+			matches.Rest = "/" + strings.Join(urlParts[i:], "/")
 			break
 		}
 
 		// segment mismatch / missing required field:
 		if m == "" || (val == "" && flag != "?" && flag != "*") {
-			return false
+			return nil
 		}
 
 		rest := flag == "+" || flag == "*"
+
+		// rest (+/*) match:
+		if rest {
+			decodedParts := make([]string, len(urlParts[i:]))
+			for j, part := range urlParts[i:] {
+				decoded, _ := url.QueryUnescape(part)
+				decodedParts[j] = decoded
+			}
+			val = strings.Join(decodedParts, "/")
+		}
+		// normal/optional field:
+		if val != "" {
+			val, _ = url.QueryUnescape(urlParts[i])
+		}
+
+		matches.Params[param] = val
 
 		if rest {
 			break
 		}
 	}
 
-	return true
+	return matches
 }
 
 func filterEmpty(s []string) []string {
@@ -71,9 +99,18 @@ func max(a, b int) int {
 
 // Example usage:
 // func main() {
-// 	fmt.Println(preactIsoUrlPatternMatch("/foo/bar", "/foo/:param"))
+// 	params := &Matches{Params: make(map[string]string)}
+// 	fmt.Println(preactIsoUrlPatternMatch("/foo/bar%20baz", "/foo/:param", params))
+//
+// 	params := &Matches{Params: make(map[string]string)}
 // 	fmt.Println(preactIsoUrlPatternMatch("/foo/bar/baz", "/foo/*"))
+//
+// 	params := &Matches{Params: make(map[string]string)}
 // 	fmt.Println(preactIsoUrlPatternMatch("/foo", "/foo/:param?"))
+//
+// 	params := &Matches{Params: make(map[string]string)}
 // 	fmt.Println(preactIsoUrlPatternMatch("/foo/bar", "/bar/:param"))
+//
+// 	params := &Matches{Params: make(map[string]string)}
 // 	fmt.Println(preactIsoUrlPatternMatch("/users/test%40example.com/posts", "/users/:userId/posts"))
 // }

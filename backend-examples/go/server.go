@@ -13,9 +13,27 @@ import (
 )
 
 type Route struct {
-	Path      string `json:"path"`
-	Title     string `json:"title"`
-	Component string `json:"Component"`
+	Path            string            `json:"path"`
+	Title           string            `json:"title"`
+	Component       string            `json:"Component"`
+	Default         bool              `json:"default"`
+	RouteId         string            `json:"routeId"`
+	Preload         []PreloadItem     `json:"preload"`
+	GetPrefetchUrls string            `json:"getPrefetchUrls"`
+}
+
+type PreloadItem struct {
+	As   string `json:"as"`
+	Href string `json:"href"`
+}
+
+type RouteParams struct {
+	URL     string            `json:"url"`
+	Path    string            `json:"path"`
+	Params  map[string]string `json:"params"`
+	Query   map[string]string `json:"query"`
+	Default bool              `json:"default"`
+	RouteId string            `json:"routeId"`
 }
 
 func main() {
@@ -48,6 +66,20 @@ func main() {
 	fs := http.FileServer(http.Dir(filepath.Join(root, "dist")))
 	http.Handle("/public/", http.StripPrefix("/public/", fs))
 
+	var defaultRoute *Route
+	for _, route := range clientSideManagedRoutes {
+		if route.Default {
+			defaultRoute = &route
+			break
+		}
+	}
+
+	// Test API endpoint
+	http.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"test": "test"})
+	})
+
 	// Main handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		template, err := ioutil.ReadFile(filepath.Join(root, "dist", "index.html"))
@@ -56,15 +88,27 @@ func main() {
 			return
 		}
 
-		var matchingRoute Route
+		params := &Matches{Params: make(map[string]string)}
+		var found *Route
 		for _, route := range clientSideManagedRoutes {
-			if preactIsoUrlPatternMatch(r.URL.Path, route.Path) {
-				matchingRoute = route
+			if preactIsoUrlPatternMatch(r.URL.Path, route.Path, params) != nil {
+				found = &route
 				break
 			}
 		}
+		if found == nil {
+			found = defaultRoute
+		}
 
-		manifestEntry, ok := viteProdManifest[matchingRoute.Component].(map[string]interface{})
+		// for requests like /favicon.ico don't spend time rendering 404 page
+		if found == defaultRoute && (
+			defaultRoute == nil ||
+			strings.Contains(strings.Split(r.URL.Path, "/")[len(strings.Split(r.URL.Path, "/"))-1], ".")) {
+			http.NotFound(w, r)
+			return
+		}
+
+		manifestEntry, ok := viteProdManifest[found.Component].(map[string]interface{})
 		if !ok {
 			manifestEntry = make(map[string]interface{})
 		}
@@ -92,14 +136,36 @@ func main() {
 
 		headContent := []string{}
 		endHeadContent := []string{}
-		if matchingRoute.Title != "" {
-			headContent = append(headContent, fmt.Sprintf("<title>%s</title>", matchingRoute.Title))
+		if found.Title != "" {
+			headContent = append(headContent, fmt.Sprintf("<title>%s</title>", found.Title))
 		}
 		for _, js := range preloadJS {
 			headContent = append(headContent, fmt.Sprintf(`  <link rel="modulepreload" crossorigin href="%s">`, js))
 		}
+		if found.GetPrefetchUrls != "" {
+			queryParams := make(map[string]string)
+			for key, values := range r.URL.Query() {
+				if len(values) > 0 {
+						queryParams[key] = values[0]
+				}
+			}
+			routeParams := RouteParams{
+				URL:     r.URL.String(),
+				Path:    found.Path,
+				Params:  params.Params,
+				Query:   queryParams,
+				Default: found.Default,
+				RouteId: found.RouteId,
+			}
+			headContent = append(headContent, getInlinePrefetchCode(found.GetPrefetchUrls, routeParams))
+		}
 		for _, css := range preloadCSS {
 			endHeadContent = append(endHeadContent, fmt.Sprintf(`  <link rel="stylesheet" crossorigin href="%s">`, css))
+		}
+		if found.Preload != nil {
+			for _, item := range found.Preload {
+				endHeadContent = append(endHeadContent, fmt.Sprintf(`  <link rel="preload" as="%s" crossorigin href="%s">`, item.As, item.Href))
+			}
 		}
 
 		html := strings.Replace(string(template), "<!-- ssr-head-placeholder -->", strings.Join(headContent, "\n"), 1)
@@ -111,4 +177,16 @@ func main() {
 
 	log.Printf("Listening on http://localhost:%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func getInlinePrefetchCode(getPrefetchUrlsFuncCode string, route RouteParams) string {
+	param, _ := json.Marshal(route)
+	return fmt.Sprintf(`<script>(window.prefetchUrlsPromise = Promise.resolve((%s)(%s))).then(m=>Object.entries(m).forEach(([,u])=>{
+		let d=document.createElement('link')
+		d.rel='preload'
+		d.as='fetch'
+		d.crossOrigin='anonymous'
+		d.href=u
+		document.head.appendChild(d)
+	}))</script>`, getPrefetchUrlsFuncCode, string(param))
 }

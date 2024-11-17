@@ -176,7 +176,7 @@ fastify.all('*', async (req, reply) => {
         })
         || defaultRoute
       );
-      // for requests like /favico.ico don't spend time rendering 404 page
+      // for requests like /favicon.ico don't spend time rendering 404 page
       if (found === defaultRoute && (
         defaultRoute === null
         || (url.split('/').pop() || '').includes('.')
