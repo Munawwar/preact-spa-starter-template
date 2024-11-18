@@ -172,7 +172,7 @@ fastify.all('*', async (req, reply) => {
       const found = /** @type {ManifestRoute} */ (
         clientSideManagedRoutes.find((route) => {
           params = {};
-          preactIsoUrlPatternMatch(pathname, route.path, { params })
+          return preactIsoUrlPatternMatch(pathname, route.path, { params })
         })
         || defaultRoute
       );
