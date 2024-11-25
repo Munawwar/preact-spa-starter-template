@@ -20,28 +20,40 @@ npm run dev
   - Manage page title - so that it looks good on browser tab & browser back button history
   - 404 Screen
   - Error Screen
-- Use a server and get JS and CSS preloading
+- Preloading of JS and CSS (and with some effort fetch() calls too) with a server (JS, Go, Python, Ruby and PHP examples)
 - [CSS Modules](https://github.com/css-modules/css-modules) - with eslint typo/unused css check and autocomplete (it is easy to remove this and use tailwind)
 - ESLint and Prettier
 - Type check via JSDocs and typescript checker (tsc)
 - [Yorkie](https://www.npmjs.com/package/yorkie) git push linting hook
 - [Vitest](https://vitest.dev/) + [Preact testing library](https://preactjs.com/guide/v10/preact-testing-library/) + [Playwright](https://playwright.dev/)
 
-### Server? Why?
+### Server? Why not serve directly from S3?
 
 You can upload your index.html to any static file hosting service (like AWS S3) and it will work. But understand that there will be a delay when the page loads.
 
 How loading of a typical SPA works: HTML loads, then index.js loads, then route.js loads, then route's dependencies loads. These are happening in serial order. However if you have a server (doesn't matter which language; there are examples in `backend-examples/` directory), then you can preload all the dependencies in parallel (including CSS).
 
-I suggest you to use a server anyway for other reasons. If you put your index.html file on a static hosting service (like AWS S3), then where will your APIs be served from? On another sub-domain? But then every POST request will causes a CORS preflight, which slows down calls unnecessarily, even with Access-Control-Max-Age header (for every new URL path user fetches, there will be a preflight request because it is not in the cache).
+<div style="text-align: center">
+
+Without preloading
+<br>
+![Without preloading](./docs/without-preload.png)
+<br><br>
+
+With preloading<br>
+![With preloading](./docs/with-preload.png)
+
+</div>
+
+I suggest you to use a server anyway for other reasons. If you put your index.html file on a static hosting service (like AWS S3), then where will your APIs be served from? On another sub-domain? But then every POST request will causes a CORS preflight, which slows down calls unnecessarily (even with Access-Control-Max-Age header, for every new URL path app needs to fetch, there will be one new preflight request).
 
 You can avoid CORS preflight requests altogether by having APIs on the same domain as the HTML. Also avoid cross domain cookie issues, by having APIs on the same domain.
 
-So you're thinking, "ok so where will JS,CSS,images be served from?". It can be served from the same server under same domain, or you could upload JS/CSS/images to a static hosting service and place that behind a CDN on a subdomain. "aha, but you just re-introduced CORS!". Nope. `<link>` and `<script>` tags can easily accommodate JS & CSS from a subdomain. You probably will use a CDN anyway if your backend server doesn't support HTTP/2 (I recommend HTTP/2 or above for static files; it reduces waterfall requests as most browsers limit number of parallel HTTP/1 requests to `6` parallel requests).
+So you're thinking, "ok so where will JS,CSS,images be served from?". It can be served from the same server under same domain, or you could upload JS/CSS/images to a static hosting service and place that behind a CDN on a subdomain. "Aha! But you just re-introduced CORS!". Nope. `<link>` and `<script>` tags can easily accommodate JS & CSS from a subdomain. You probably will use a CDN anyway if your backend server doesn't support HTTP/2 (I recommend HTTP/2 or above for static files; it reduces waterfall requests as most browsers limit number of parallel HTTP/1 requests to `6` parallel requests).
 
 ### About Routes
 
-You can find routes mapping (url-to-component mapping) at src/routes/routes.js.
+You can find routes mapping (it maps URL patterns to components) at [`src/routes/routes.js`](https://github.com/Munawwar/preact-spa-template/blob/preload/src/routes/routes.js).
 
 You will notice that <code>lazy(() =&gt; import('./file'))</code> is
 used for lazy loading and bundling each page's JS into separate bundles
@@ -51,14 +63,14 @@ You can also manage page titles from routes.js. `title` must be a string (it can
 
 Route components receives following properties about current route:
 
-- url: `url` without origin and URI fragment. e.g '/user/123?tab=subscription'
+- url: `url` without origin and URI fragment. e.g `/user/123?tab=subscription`
 - path: route pattern. e.g. `/user/:id`
 - params: path matches (as an object). e.g: `{ id: 'user1' }`
 - title: the title text used to set head title tag
 - query: query params (as an object). e.g: `{ search: 'john' }`
 - routeId: the routeId used in route.js
 
-Path redirects can be configured in src/routes/redirects.js
+Path redirects can be configured in `src/routes/redirects.js`
 
 ### Path aliases
 
@@ -66,10 +78,14 @@ Path redirects can be configured in src/routes/redirects.js
 
 Similarly for types, there is a shorthand alias `@` to the types/ directory. e.g. `import('@/Route').PageComponent`
 
+### Preloading fetch() calls
+
+Check example at [`src/routes/routes.js`](https://github.com/Munawwar/preact-spa-template/blob/preload/src/routes/routes.js).
+
 ## Where to go next?
 
 - Check package.json - dependencies, scripts and eslint rules
-- Check the implementation of src/App.jsx
+- Check the implementation of [`src/App.jsx`](https://github.com/Munawwar/preact-spa-template/blob/preload/src/App.jsx).
 - Read about [preact/compat](https://preactjs.com/guide/v10/switching-to-preact/)
 - Add or remove stuff as you need. Check out other tools:
   - Whole list of preact related tools at [awesome-preact](https://github.com/preactjs/awesome-preact)
