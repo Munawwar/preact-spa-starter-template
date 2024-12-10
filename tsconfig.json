@@ -36,7 +36,7 @@
     "module": "Preserve",                                /* Specify what module code is generated. */
     // "rootDir": "./",                                  /* Specify the root folder within your source files. */
     "moduleResolution": "bundler"                        /* Specify module resolution strategy: 'node' (Node.js) or 'classic' (TypeScript pre-1.6). */,
-    "baseUrl": "./" /* Specify the base directory to resolve non-relative module names. */,
+    "baseUrl": "./"                                      /* Specify the base directory to resolve non-relative module names. */,
     "paths": {
       "~/*": ["./src/*"],
       "@/*": ["./types/*"],
@@ -123,5 +123,11 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
-  "include": ["src/**/*.js", "src/**/*.jsx", "server.js", "types/ignores.d.ts"]
+  "include": [
+      "src/**/*.js",
+      "src/**/*.jsx",
+      "types/ignores.d.ts",
+      "src/**/*.module.css.d.ts",
+      "server.js"
+    ]
 }

@@ -21,15 +21,15 @@ export default defineConfig({
   base: isProduction ? publicURLPath : '/',
   plugins: [preact()].concat(
     // @ts-ignore
-    process.env.NODE_ENV !== 'production' ? sassDts() : [],
-    process.env.NODE_ENV !== 'production' ? pluginDevSSL({
+    isProduction ? [] : sassDts(),
+    isProduction ? [] : pluginDevSSL({
       /** name of certification */
       name: 'localhost',
       /** custom trust domains */
       domains: ['localhost'],
       /** custom certification directory */
       certDir: './certs/'
-    }) : [],
+    }),
     {
       name: 'post-build-cmd',
       async closeBundle() {
@@ -74,10 +74,9 @@ export default defineConfig({
     manifest: true,
     ssrManifest: true,
     rollupOptions: {
-      plugins:
-        process.env.NODE_ENV === 'production'
-          ? [visualizer({ filename: 'bundle-analysis.html' })]
-          : [],
+      plugins: isProduction
+        ? [visualizer({ filename: 'bundle-analysis.html' })]
+        : [],
     },
   },
   resolve: {
