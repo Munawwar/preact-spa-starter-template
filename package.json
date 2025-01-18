@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "prod": "NODE_ENV=production HTTP2=true node server.js",
+    "dev": "bash -c \"node server.js\"",
+    "prod": "NODE_ENV=production HTTP2=true bash -c \"node server.js\"",
+    "//dev-prod-comment": "we are explicitly using bash as npm uses `sh` internally which on debian may swallow signals like SIGTERM - https://github.com/npm/cli/issues/6684#issuecomment-2567262280",
+
     "build": "vite build",
     "preview": "vite build && npx --package=local-web-server@5.4.0 ws -p 5173 -d dist --http2",
     "lint": "eslint --ext js,jsx src/ tests/ && prettier --check src/ tests/",

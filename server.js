@@ -19,7 +19,9 @@ const rootDir = __dirname;
 
 // Constants
 const isProduction = process.env.NODE_ENV === 'production';
-const HTTP2 = process.env.HTTP2 === 'true' || !isProduction;
+const HTTP2 = process.env.HTTP2 === 'true' || process.env.HTTP2 === '1';
+console.debug('Production:', isProduction ? 'true' : 'false');
+console.debug('HTTP/2:', HTTP2 ? 'true' : 'false');
 const PORT = parseInt(process.env.PORT || '', 10) || 5173;
 const HMR_PORT = 5174;
 

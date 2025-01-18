@@ -7,6 +7,9 @@ Clone repo, use node.js 14+ and run following:
 ```
 npm ci
 npm run dev
+
+# If you want an HTTP/2 local server
+HTTP2=1 npm run dev
 # when you run this the first time, `@expo/devcert` could ask root permissions to generate a certificate for local development server.
 ```
 
