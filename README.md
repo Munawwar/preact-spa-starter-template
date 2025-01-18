@@ -27,9 +27,11 @@ npm run dev
 - [Yorkie](https://www.npmjs.com/package/yorkie) git push linting hook
 - [Vitest](https://vitest.dev/) + [Preact testing library](https://preactjs.com/guide/v10/preact-testing-library/) + [Playwright](https://playwright.dev/)
 
-### Server? Why not serve directly from S3?
+## Server? Why not serve directly from S3?
 
-You can upload your index.html to any static file hosting service (like AWS S3) and it will work. But understand that there will be a delay when the page loads.
+You can upload your index.html to any static file hosting service (like AWS S3) and it will work. But I find adding a server as a good idea for multiple reasons:
+
+### Faster Loading
 
 How loading of a typical SPA works: HTML loads, then index.js loads, then route.js loads, then route's dependencies loads. These are happening in serial order. However if you have a server (doesn't matter which language; there are examples in `backend-examples/` directory), then you can preload all the dependencies in parallel (including CSS).
 
@@ -45,13 +47,15 @@ With preloading<br>
 
 </div>
 
-I suggest you to use a server anyway for other reasons. If you put your index.html file on a static hosting service (like AWS S3), then where will your APIs be served from? On another sub-domain? But then every POST request will causes a CORS preflight, which slows down calls unnecessarily (even with Access-Control-Max-Age header, for every new URL path app needs to fetch, there will be one new preflight request).
+### Avoiding CORS latency
 
-You can avoid CORS preflight requests altogether by having APIs on the same domain as the HTML. Also avoid cross domain cookie issues, by having APIs on the same domain.
+If you put your index.html file on a static hosting service (like AWS S3), then where will your APIs be served from? On another sub-domain? In that case, every POST request will causes a CORS preflight request (for me it adds 150ms), which slows down calls unnecessarily. Even with Access-Control-Max-Age header, for every new URL path app needs to fetch, there will be one new preflight request. Say you have an ID in your URL (e.g. `/orders/:orderId`), then every unique ID will cause a new CORS request even with Access-Control-Max-Age header. You can avoid CORS preflight requests altogether by having APIs on the same domain as the HTML.
 
-So you're thinking, "ok so where will JS,CSS,images be served from?". It can be served from the same server under same domain, or you could upload JS/CSS/images to a static hosting service and place that behind a CDN on a subdomain. "Aha! But you just re-introduced CORS!". Nope. `<link>` and `<script>` tags can easily accommodate JS & CSS from a subdomain. You probably will use a CDN anyway if your backend server doesn't support HTTP/2 (I recommend HTTP/2 or above for static files; it reduces waterfall requests as most browsers limit number of parallel HTTP/1 requests to `6` parallel requests).
+You might be thinking, "ok so where will JS,CSS,images be served from?". It can be served from the same server under same domain. Or you could upload JS/CSS/images to a static hosting service. "Aha! But you just re-introduced CORS!". Nope. `<link>` and `<script>` tags can easily accommodate JS & CSS from a subdomain. You probably will use a static file server + CDN anyway if your backend server doesn't support HTTP/2 (I recommend HTTP/2 or above for static files; it reduces waterfall requests as most browsers limit number of parallel HTTP/1 requests to `6` parallel requests).
 
-### About Routes
+Also by having APIs on the same domain, you can avoid other issues like cross domain cookie issues.
+
+## About Routes
 
 You can find routes mapping (it maps URL patterns to components) at [`src/routes/routes.js`](https://github.com/Munawwar/preact-spa-template/blob/preload/src/routes/routes.js).
 
@@ -72,13 +76,13 @@ Route components receives following properties about current route:
 
 Path redirects can be configured in `src/routes/redirects.js`
 
-### Path aliases
+## Path aliases
 
 `~` is short hand for src/ directory. So you don't have to do `import '../../../js-file-in-src-directory'`. You can just do `import '~/js-file-in-src-directory'`
 
 Similarly for types, there is a shorthand alias `@` to the types/ directory. e.g. `import('@/Route').PageComponent`
 
-### Preloading fetch() calls
+## Preloading fetch() calls
 
 Check example at [`src/routes/routes.js`](https://github.com/Munawwar/preact-spa-template/blob/preload/src/routes/routes.js).
 
