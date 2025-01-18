@@ -32,11 +32,11 @@ HTTP2=1 npm run dev
 
 ## Server? Why not serve directly from S3?
 
-You can upload your index.html to any static file hosting service (like AWS S3) and it will work. But I find adding a server as a good idea for multiple reasons:
+You can upload your index.html to any static file hosting service (like AWS S3) and it will work fine, but I find adding a server (doesn't matter which backend language you use) a good idea for multiple reasons:
 
-### Faster Loading
+### 1. Faster first page load
 
-How loading of a typical SPA works: HTML loads, then index.js loads, then route.js loads, then route's dependencies loads. These are happening in serial order. However if you have a server (doesn't matter which language; there are examples in `backend-examples/` directory), then you can preload all the dependencies in parallel (including CSS).
+How loading of a typical SPA works: HTML loads, then index.js loads, then route.js loads, then route's dependencies loads. These are happening in serial order. However if you have a server, then you can preload all the dependencies in parallel (including CSS). Currently in addition to a JS example (`server.js`) that does preloading, I have examples with Python, Go, PHP and Ruby in `backend-examples/` directory.
 
 <div style="text-align: center">
 
@@ -50,7 +50,7 @@ With preloading<br>
 
 </div>
 
-### Avoiding CORS latency
+### 2. Avoiding CORS latency
 
 If you put your index.html file on a static hosting service (like AWS S3), then where will your APIs be served from? On another sub-domain? In that case, every POST request will causes a CORS preflight request (for me it adds 150ms), which slows down calls unnecessarily. Even with Access-Control-Max-Age header, for every new URL path app needs to fetch, there will be one new preflight request. Say you have an ID in your URL (e.g. `/orders/:orderId`), then every unique ID will cause a new CORS request even with Access-Control-Max-Age header. You can avoid CORS preflight requests altogether by having APIs on the same domain as the HTML.
 
