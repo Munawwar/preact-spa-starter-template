@@ -196,10 +196,14 @@ fastify.all('*', async (req, reply) => {
         path,
       } = found;
       const manifestEntry = viteProdManifest[entryFileName];
-      const preloadJS = (manifestEntry?.imports || [])
-        .concat(manifestEntry?.file)
-        .filter(file => file && !file.endsWith('.html')) // why are .html files in manifest imports list?
-        .map((file) => `${publicURLPath}/${file}`);
+      const preloadJS = [entryFileName]
+        .concat(manifestEntry?.imports || [])
+        .filter(file => (
+          file
+          && viteProdManifest[file]?.file
+          && !file.endsWith('.html') // why are .html files in manifest imports list?
+        ))
+        .map((file) => `${publicURLPath}/${viteProdManifest[file].file}`)
       const preloadCSS = (manifestEntry?.css || [])
         .map((file) => `${publicURLPath}/${file}`);
       html = template.replace('<!-- ssr-head-placeholder -->', [
