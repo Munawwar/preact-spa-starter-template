@@ -101,6 +101,9 @@ def catch_all(path):
         html = template.replace('<!-- ssr-head-placeholder -->', head_tags)
         html = html.replace('</head>', f'{end_tags}\n</head>')
 
+        if found == default_route:
+            return Response(html, status=404, mimetype='text/html')
+
         return Response(html, mimetype='text/html')
     except Exception as e:
         return str(e), 500

@@ -88,6 +88,9 @@ get '/*' do
   html = template.sub('<!-- ssr-head-placeholder -->', head_tags)
   html = html.sub('</head>', "#{end_tags}\n</head>")
 
+  if found == default_route
+    status 404
+  end
   content_type 'text/html'
   html
 end

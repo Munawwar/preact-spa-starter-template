@@ -160,6 +160,7 @@ fastify.all('*', async (req, reply) => {
     const url = req.url; // this doesn't contain the origin, but does contain query params. e.g. /api/test?foo=bar
     let template
     let html;
+    let status = 200;
     if (!isProduction) {
       // Always read fresh template in development
       template = fs.readFileSync(pathModule.resolve(rootDir, 'index.html'), 'utf-8')
@@ -223,9 +224,12 @@ fastify.all('*', async (req, reply) => {
         ...(preload ? preload.map(({ as, href }) => `  <link rel="preload" as="${as}" crossorigin href="${href}">`) : []),
       ].join('\n');
       html = html.replace('</head>', `${endTags}\n</head>`);
+      if (isDefault) {
+        status = 404;
+      }
     }
 
-    reply.code(200).header('Content-Type', 'text/html').send(html)
+    reply.code(status).header('Content-Type', 'text/html').send(html)
   } catch (e) {
     // @ts-ignore
     vite?.ssrFixStacktrace(e)

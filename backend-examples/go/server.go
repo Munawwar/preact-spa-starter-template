@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"runtime"
+	"strings"
 )
 
 type Route struct {
@@ -170,7 +170,10 @@ func main() {
 
 		html := strings.Replace(string(template), "<!-- ssr-head-placeholder -->", strings.Join(headContent, "\n"), 1)
 		html = strings.Replace(string(html), "</head>", strings.Join(endHeadContent, "\n") + "\n</head>", 1)
-
+		
+		if found == defaultRoute {
+			w.WriteHeader(http.StatusNotFound)
+		}
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(html))
 	})

@@ -130,5 +130,7 @@ foreach ($preload as $item) {
 $html = str_replace('<!-- ssr-head-placeholder -->', implode("\n", $headTags), $template);
 $html = str_replace('</head>', implode("\n", $endTags) . "\n</head>", $html);
 
+if ($found === $defaultRoute)
+    http_response_code(404);
 header('Content-Type: text/html');
 echo $html;
