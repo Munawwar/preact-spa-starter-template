@@ -49,14 +49,12 @@ const server = HTTP2
   )
   : http.createServer((...args) => fastifyHandler(...args));
 // On dev, when using HTTP2, we need to create a separate HTTPS+HTTP1 server for HMR to work
-const hmrServer = !isProduction ? (
-  HTTP2
-    ? https.createServer({
-      key: fs.readFileSync(devKeyPath, 'utf8'),
-      cert: fs.readFileSync(devCertPath, 'utf8'),
-    }, (...args) => fastifyHandler(...args))
-    : server
-) : undefined;
+const hmrServer = !isProduction && HTTP2
+  ? https.createServer({
+    key: fs.readFileSync(devKeyPath, 'utf8'),
+    cert: fs.readFileSync(devCertPath, 'utf8'),
+  }, (...args) => fastifyHandler(...args))
+  : undefined;
 
 const fastify = Fastify({
   ...(HTTP2 ? {
@@ -106,11 +104,11 @@ if (!isProduction) {
     server: {
       middlewareMode: true,
       hmr: {
-        server: hmrServer,
+        server: hmrServer ?? server,
         host,
-        port: HMR_PORT,
+        port: hmrServer ? HMR_PORT : undefined,
         protocol: HTTP2 ? 'wss' : 'ws',
-        clientPort: HMR_PORT,
+        clientPort: hmrServer ? HMR_PORT : undefined,
       }
     },
     appType: 'custom',

@@ -1,4 +1,14 @@
-import { lazy } from 'preact-iso';
+import { lazy as preactIsoLazy } from 'preact-iso';
+
+/**
+ * @type {typeof preactIsoLazy}
+ */
+function lazy(func) {
+  const val = preactIsoLazy(func);
+  // @ts-ignore
+  val.chunkPath = func.toString().match(/\(\s*\)\s*=>\s*import\s*\(\s*(.+)\s*\)/)?.[1];
+  return val;
+}
 
 /**
  * This function is solely to please typescript
