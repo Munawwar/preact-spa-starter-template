@@ -1,7 +1,38 @@
-/*! instant.page v5.2.0 - (C) 2019-2025 Alexandre Dieulot - https://instant.page/license */
+// @ts-nocheck
+/*!
+ * This is fork of instant.page that works with a client-side router (preact-iso).
+ * Also I commented out usage of browser Speculation Rules API, which cannot work
+ * with a client router.
+ * 
+ * instant.page v5.2.0 - (C) 2019-2025 Alexandre Dieulot - https://instant.page/license
+ */
+
+// eslint-disable-next-line import-x/extensions
+import { exec as preactIsoUrlPatternMatch } from 'preact-iso/router';
+import routes from './routes';
+
+/**
+ * @typedef {Object} BuildManifestEntry
+ * @property {string} file - Path to the JavaScript bundle file
+ * @property {string} name - Name identifier of the entry
+ * @property {string} src - Source HTML file path
+ * @property {boolean} isEntry - Whether this is an entry point
+ * @property {string[]} imports - Array of imported component paths
+ * @property {string[]} dynamicImports - Array of dynamically imported component paths
+ * @property {string[]} css - Array of CSS asset file paths
+ * @property {string[]} assets - Array of static asset file paths (images, icons etc)
+ */
+
+const publicPath = '/public';
+
+/** @type {{ [sourceFile: string]: BuildManifestEntry }} */
+let manifest;
+const manifestPromise = fetch(`${publicPath}/.vite/manifest.json`).then(res => res.json());
+
 
 let _chromiumMajorVersionInUserAgent = null
-  , _speculationRulesType
+  // -- Commented out as, we I can't see a way a client side router can work with 'speculationrules' ---
+  // , _speculationRulesType
   , _allowQueryString
   , _allowExternalLinks
   , _useWhitelist
@@ -67,15 +98,15 @@ function init() {
     return
   }
 
-  _speculationRulesType = 'none'
-  if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
-    const speculationRulesConfig = document.body.dataset.instantSpecrules
-    if (speculationRulesConfig == 'prerender') {
-      _speculationRulesType = 'prerender'
-    } else if (speculationRulesConfig != 'no') {
-      _speculationRulesType = 'prefetch'
-    }
-  }
+  // _speculationRulesType = 'none'
+  // if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
+  //   const speculationRulesConfig = document.body.dataset.instantSpecrules
+  //   if (speculationRulesConfig == 'prerender') {
+  //     _speculationRulesType = 'prerender'
+  //   } else if (speculationRulesConfig != 'no') {
+  //     _speculationRulesType = 'prefetch'
+  //   }
+  // }
 
   const useMousedownShortcut = 'instantMousedownShortcut' in document.body.dataset
   _allowQueryString = 'instantAllowQueryString' in document.body.dataset
@@ -388,41 +419,79 @@ function isPreloadable(anchorElement) {
   return true
 }
 
-function preload(url, fetchPriority = 'auto') {
+async function preload(url, fetchPriority = 'auto') {
   if (_preloadedList.has(url)) {
     return
   }
 
-  if (_speculationRulesType != 'none') {
-    preloadUsingSpeculationRules(url)
-  } else {
-    preloadUsingLinkElement(url, fetchPriority)
+  // If the URL is to a page which preact router recognizes, then
+  // we need to preload the CSS and JS instead.
+  let urlPath;
+  try {
+    urlPath = new URL(url, window.location.origin).pathname;
+  } catch (err) {
+    // ignore
   }
+  if (urlPath) {
+    const route = routes.find(
+      ({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} })
+    );
+    if (route && !route.default && route.Component.chunkPath) {
+      try {
+        if (!manifest) manifest = await manifestPromise;
+      } catch (error) {
+        return;
+      }
+      const chunkName = route.Component.chunkPath.split('/').pop();
+      const entry = Object.values(manifest).find(({ file }) => file.endsWith(`/${chunkName}`));
+      (entry.imports ?? [])
+        .filter(file => file && file !== 'index.html' && manifest[file]?.file)
+        .forEach(file => preloadUsingLinkElement(
+          `${publicPath}/${manifest[file]?.file}`,
+          fetchPriority,
+          'script',
+          'modulepreload'
+        ));
+      (entry.css ?? [])
+        .forEach(file => preloadUsingLinkElement(
+          `${publicPath}/${file}`,
+          fetchPriority,
+          'style'
+        ));
+      return;
+    }
+  }
+
+  // if (_speculationRulesType != 'none') {
+  //   preloadUsingSpeculationRules(url)
+  // } else {
+  preloadUsingLinkElement(url, fetchPriority)
+  // }
 
   _preloadedList.add(url)
 }
 
-function preloadUsingSpeculationRules(url) {
-  const scriptElement = document.createElement('script')
-  scriptElement.type = 'speculationrules'
+// function preloadUsingSpeculationRules(url) {
+//   const scriptElement = document.createElement('script')
+//   scriptElement.type = 'speculationrules'
 
-  scriptElement.textContent = JSON.stringify({
-    [_speculationRulesType]: [{
-      source: 'list',
-      urls: [url]
-    }]
-  })
+//   scriptElement.textContent = JSON.stringify({
+//     [_speculationRulesType]: [{
+//       source: 'list',
+//       urls: [url]
+//     }]
+//   })
 
-  // When using speculation rules, cross-site prefetch is supported, but will
-  // only work if the user has no cookies for the destination site. The
-  // prefetch will not be sent, if the user does have such cookies.
+//   // When using speculation rules, cross-site prefetch is supported, but will
+//   // only work if the user has no cookies for the destination site. The
+//   // prefetch will not be sent, if the user does have such cookies.
 
-  document.head.appendChild(scriptElement)
-}
+//   document.head.appendChild(scriptElement)
+// }
 
-function preloadUsingLinkElement(url, fetchPriority = 'auto') {
+function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', rel = 'prefetch') {
   const linkElement = document.createElement('link')
-  linkElement.rel = 'prefetch'
+  linkElement.rel = rel
   linkElement.href = url
 
   linkElement.fetchPriority = fetchPriority
@@ -436,7 +505,7 @@ function preloadUsingLinkElement(url, fetchPriority = 'auto') {
   // prefetches happening once the initial page is sufficiently loaded,
   // this theft of bandwidth should rarely be detrimental.
 
-  linkElement.as = 'document'
+  linkElement.as = as
   // as=document is Chromium-only and allows cross-origin prefetches to be
   // usable for navigation. They call it “restrictive prefetch” and intend
   // to remove it: https://crbug.com/1352371

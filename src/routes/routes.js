@@ -1,12 +1,13 @@
 import { lazy as preactIsoLazy } from 'preact-iso';
 
+const importFilePathRegex = /\(\s*\)\s*=>\s*import\s*\(\s*['"]\s*(.+)\s*['"]\s*\)/;
 /**
  * @type {typeof preactIsoLazy}
  */
 function lazy(func) {
   const val = preactIsoLazy(func);
   // @ts-ignore
-  val.chunkPath = func.toString().match(/\(\s*\)\s*=>\s*import\s*\(\s*['"]\s*(.+)\s*['"]\s*\)/)?.[1];
+  val.chunkPath = func.toString().match(importFilePathRegex)?.[1];
   return val;
 }
 
