@@ -29,6 +29,9 @@ function Home(props) {
 
       <h2>Check out other pages</h2>
       <p>
+        <a href="/user/id">User ID</a>
+      </p>
+      <p>
         <a href="/this-url-does-not-exist">404 Page</a>
       </p>
       <p>

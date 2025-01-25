@@ -97,4 +97,10 @@ function App() {
   );
 }
 
+if (import.meta.env.PROD) {
+  window.addEventListener('DOMContentLoaded', () => {
+    import('./routes/instant-page-preact-iso');
+  });
+}
+
 export default App;

@@ -6,7 +6,7 @@ import { lazy as preactIsoLazy } from 'preact-iso';
 function lazy(func) {
   const val = preactIsoLazy(func);
   // @ts-ignore
-  val.chunkPath = func.toString().match(/\(\s*\)\s*=>\s*import\s*\(\s*(.+)\s*\)/)?.[1];
+  val.chunkPath = func.toString().match(/\(\s*\)\s*=>\s*import\s*\(\s*['"]\s*(.+)\s*['"]\s*\)/)?.[1];
   return val;
 }
 

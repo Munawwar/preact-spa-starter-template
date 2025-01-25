@@ -113,6 +113,7 @@ if (!isProduction) {
     },
     appType: 'custom',
     base: '/',
+    // publicDir: pathModule.resolve(rootDir, 'dist'),
     clearScreen: false,
   })
   await fastify.register(import('@fastify/middie'))
@@ -124,8 +125,17 @@ if (!isProduction) {
   await fastify.register(fastifyStatic, {
     root: pathModule.resolve(rootDir, 'dist'),
     prefix: publicURLPath,
-    maxAge: '1w',
     index: false,
+    cacheControl: false,
+    setHeaders(res, path) {
+      if (path === pathModule.resolve(rootDir, 'dist/.vite/manifest.json')) {
+        // don't cache anything that doesn't have a hash suffix
+        res.setHeader('cache-control', 'no-store');
+      } else {
+        // one-week caching
+        res.setHeader('cache-control', 'public, max-age=604800, must-revalidate');
+      }
+    }
   })
   clientSideManagedRoutes = JSON.parse(fs.readFileSync(pathModule.resolve(rootDir, 'dist/routes.json'), 'utf-8'))
   viteProdManifest = JSON.parse(fs.readFileSync(pathModule.resolve(rootDir, 'dist/.vite/manifest.json'), 'utf-8'))
