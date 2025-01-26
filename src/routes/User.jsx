@@ -1,12 +1,11 @@
 import useFetch from '~/useFetch';
-import svgUrl from '../third-party/illustrations/well-done.svg';
-import styles from './Home.module.css';
+import styles from './User.module.css';
 
 /**
- * @template {'/'} T
+ * @template {'/user/:id'} T
  * @param {import('@/Route').PageComponentProps<T>} props
  */
-function Home(props) {
+function User(props) {
   const { data, error, loading } = useFetch(
     '/api/test',
     {},
@@ -18,18 +17,13 @@ function Home(props) {
   console.log(data, error, loading);
   return (
     <div class={styles.root}>
-      <h1 style={{ textAlign: 'center' }}>Preact Vite SPA Starter Template</h1>
+      <h1 style={{ textAlign: 'center' }}>You are viewing the {props.title} Page</h1>
 
-      <div>
-        <img src={svgUrl} alt="Hooray!" class={styles.image} />
-        <div class={styles.text}>
-          <strong>Hooray! The thing works!</strong>
-        </div>
-      </div>
+      <p>":id" param from URL path = "{props.params.id}"</p>
 
       <h2>Check out other pages</h2>
       <p>
-        <a href="/user/id">User ID</a>
+        <a href="/">Home Page</a>
       </p>
       <p>
         <a href="/this-url-does-not-exist">404 Page</a>
@@ -37,9 +31,7 @@ function Home(props) {
       <p>
         <a href="/error">Error Page</a>
       </p>
-
-      <p>You are at the {props.title} page</p>
     </div>
   );
 }
-export default Home;
+export default User;

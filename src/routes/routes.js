@@ -39,7 +39,11 @@ const routes = [
   route('/user/:id', {
     routeId: 'user',
     title: 'User',
-    Component: lazy(() => import('./Home')),
+    Component: lazy(() => import('./User')),
+    preload: [{
+      as: 'fetch',
+      href: '/api/test',
+    }],
   }),
   route('/error', {
     routeId: 'error',

@@ -450,13 +450,15 @@ async function preload(url, fetchPriority = 'auto') {
           `${publicPath}/${manifest[file]?.file}`,
           fetchPriority,
           'script',
-          'modulepreload'
+          'modulepreload',
+          'anonymous'
         ));
       (entry.css ?? [])
         .forEach(file => preloadUsingLinkElement(
           `${publicPath}/${file}`,
           fetchPriority,
-          'style'
+          'style',
+          'anonymous'
         ));
       return;
     }
@@ -489,7 +491,16 @@ async function preload(url, fetchPriority = 'auto') {
 //   document.head.appendChild(scriptElement)
 // }
 
-function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', rel = 'prefetch') {
+function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', rel = 'prefetch', crossOrigin) {
+  // Remove existing preload links with same href
+  try {
+    document.head
+      .querySelectorAll(`link[rel="${rel}"][href="${url}"]`)
+      .forEach(link => link.remove());
+  } catch (err) {
+    // This try catch exists to be defensive against invalid characters in URL?
+  }
+
   const linkElement = document.createElement('link')
   linkElement.rel = rel
   linkElement.href = url
@@ -516,6 +527,10 @@ function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', r
   // the setting to disable preloading do not disable restrictive prefetch,
   // unlike regular prefetch. That’s good for prefetching on a touch/mouse
   // event, but might be bad when prefetching every link in the viewport.
+
+  if (crossOrigin) {
+    linkElement.crossOrigin = crossOrigin;
+  }
 
   document.head.appendChild(linkElement)
 }

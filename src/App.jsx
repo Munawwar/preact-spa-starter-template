@@ -1,5 +1,7 @@
 import { LocationProvider, ErrorBoundary, Router, useLocation, useRoute } from 'preact-iso';
-import { useEffect, useLayoutEffect } from 'preact/hooks';
+// @ts-ignore
+import { exec as preactIsoUrlPatternMatch } from 'preact-iso/router';
+import { useEffect, useLayoutEffect, useMemo } from 'preact/hooks';
 import Layout from './components/layout/AppLayout';
 import routes from './routes/routes';
 import redirects from './routes/redirects';
@@ -17,24 +19,28 @@ const RouteComponent = (props) => {
   const { params, query } = useRoute();
   const { url } = useLocation();
 
+  // a useMemo is needed here as preact-iso lazy() will re-render
+  // Component twice for some reason.
   /** @type {Promise<{ [key: string]: string }>|undefined} */
-  let prefetchUrlsPromise;
-  if (window.prefetchUrlsPromise) {
-    prefetchUrlsPromise = window.prefetchUrlsPromise;
-    // @ts-ignore
-    delete window.prefetchUrlsPromise;
-  } else if (getPrefetchUrls) {
-    prefetchUrlsPromise = Promise.resolve(
-      getPrefetchUrls({
+  const prefetchUrlsPromise = useMemo(() => {
+    if (window.prefetchUrlsPromise) {
+      const temp = window.prefetchUrlsPromise;
+      // @ts-ignore
+      delete window.prefetchUrlsPromise;
+      return temp;
+    }
+    if (getPrefetchUrls) {
+      return Promise.resolve(getPrefetchUrls({
         url,
         path: props.path,
         params,
         query,
         default: route.default,
         routeId: route.routeId,
-      }),
-    );
-  }
+      }));
+    }
+    return undefined;
+  }, []);
 
   const title =
     typeof route.title === 'function'
@@ -75,12 +81,36 @@ function RedirectionManager() {
   return null;
 }
 
+/**
+ * @param {string} urlPath 
+ */
+function onLoadStart(urlPath) {
+  const route = routes.find(({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} }));
+  (route?.preload ?? []).forEach(({ as, href }) => {
+    // Remove existing preload links with same href
+    try {
+      document.head
+        .querySelectorAll(`link[rel="preload"][href="${href}"]`)
+        .forEach(link => link.remove());
+    } catch (err) {
+      // ignore any errors that could happen with invalid URL characters?
+    }
+    // Add new preload tag
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = as;
+    link.crossOrigin = "anonymous";
+    link.href = href;
+    document.head.appendChild(link);
+  });
+}
+
 function App() {
   return (
     <LocationProvider>
       <RedirectionManager />
       <ErrorBoundary>
-        <Router>
+        <Router onLoadStart={onLoadStart}>
           {routes.map((route) => (
             <RouteComponent
               key={route.path}
