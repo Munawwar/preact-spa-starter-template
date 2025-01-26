@@ -468,7 +468,7 @@ async function preload(url, fetchPriority = 'auto') {
       ),
     );
   (entry.css ?? []).forEach((file) =>
-    preloadUsingLinkElement(`${publicPath}/${file}`, fetchPriority, 'style', 'anonymous'),
+    preloadUsingLinkElement(`${publicPath}/${file}`, fetchPriority, 'style', 'prefetch', 'anonymous'),
   );
 
   // if (_speculationRulesType != 'none') {
