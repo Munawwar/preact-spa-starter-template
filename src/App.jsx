@@ -30,14 +30,16 @@ const RouteComponent = (props) => {
       return temp;
     }
     if (getPrefetchUrls) {
-      return Promise.resolve(getPrefetchUrls({
-        url,
-        path: props.path,
-        params,
-        query,
-        default: route.default,
-        routeId: route.routeId,
-      }));
+      return Promise.resolve(
+        getPrefetchUrls({
+          url,
+          path: props.path,
+          params,
+          query,
+          default: route.default,
+          routeId: route.routeId,
+        }),
+      );
     }
     return undefined;
   }, []);
@@ -82,16 +84,14 @@ function RedirectionManager() {
 }
 
 /**
- * @param {string} urlPath 
+ * @param {string} urlPath
  */
 function onLoadStart(urlPath) {
   const route = routes.find(({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} }));
   (route?.preload ?? []).forEach(({ as, href }) => {
     // Remove existing preload links with same href
     try {
-      document.head
-        .querySelectorAll(`link[rel="preload"][href="${href}"]`)
-        .forEach(link => link.remove());
+      document.head.querySelectorAll(`link[rel="preload"][href="${href}"]`).forEach((link) => link.remove());
     } catch (err) {
       // ignore any errors that could happen with invalid URL characters?
     }
@@ -99,7 +99,7 @@ function onLoadStart(urlPath) {
     const link = document.createElement('link');
     link.rel = 'preload';
     link.as = as;
-    link.crossOrigin = "anonymous";
+    link.crossOrigin = 'anonymous';
     link.href = href;
     document.head.appendChild(link);
   });

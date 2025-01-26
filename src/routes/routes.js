@@ -40,10 +40,12 @@ const routes = [
     routeId: 'user',
     title: 'User (:id)',
     Component: lazy(() => import('./User')),
-    preload: [{
-      as: 'fetch',
-      href: '/api/test',
-    }],
+    preload: [
+      {
+        as: 'fetch',
+        href: '/api/test',
+      },
+    ],
   }),
   route('/error', {
     routeId: 'error',

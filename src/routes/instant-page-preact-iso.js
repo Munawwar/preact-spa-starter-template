@@ -3,7 +3,7 @@
  * This is fork of instant.page that works with a client-side router (preact-iso).
  * Also I commented out usage of browser Speculation Rules API, which cannot work
  * with a client router.
- * 
+ *
  * instant.page v5.2.0 - (C) 2019-2025 Alexandre Dieulot - https://instant.page/license
  */
 
@@ -27,37 +27,36 @@ const publicPath = '/public';
 
 /** @type {{ [sourceFile: string]: BuildManifestEntry }} */
 let manifest;
-const manifestPromise = fetch(`${publicPath}/.vite/manifest.json`).then(res => res.json());
+const manifestPromise = fetch(`${publicPath}/.vite/manifest.json`).then((res) => res.json());
 
-
-let _chromiumMajorVersionInUserAgent = null
+let _chromiumMajorVersionInUserAgent = null,
   // -- Commented out as, we I can't see a way a client side router can work with 'speculationrules' ---
   // , _speculationRulesType
-  , _allowQueryString
-  , _allowExternalLinks
-  , _useWhitelist
-  , _delayOnHover = 65
-  , _lastTouchstartEvent
-  , _mouseoverTimer
-  , _preloadedList = new Set()
+  _allowQueryString,
+  _allowExternalLinks,
+  _useWhitelist,
+  _delayOnHover = 65,
+  _lastTouchstartEvent,
+  _mouseoverTimer,
+  _preloadedList = new Set();
 
-init()
+init();
 
 function init() {
-  const supportChecksRelList = document.createElement('link').relList
+  const supportChecksRelList = document.createElement('link').relList;
 
-  const supportsPrefetch = supportChecksRelList.supports('prefetch')
+  const supportsPrefetch = supportChecksRelList.supports('prefetch');
   if (!supportsPrefetch) {
-    return
+    return;
   }
 
-  const chromium100Check = 'throwIfAborted' in AbortSignal.prototype // Chromium 100+, Safari 15.4+, Firefox 97+
-  const firefox115AndSafari17_0Check = supportChecksRelList.supports('modulepreload') // Firefox 115+, Safari 17.0+, Chromium 66+
-  const safari15_4AndFirefox116Check = Intl.PluralRules && 'selectRange' in Intl.PluralRules.prototype // Safari 15.4+, Firefox 116+, Chromium 106+
-  const firefox115AndSafari15_4Check = firefox115AndSafari17_0Check || safari15_4AndFirefox116Check
-  const isBrowserSupported = chromium100Check && firefox115AndSafari15_4Check
+  const chromium100Check = 'throwIfAborted' in AbortSignal.prototype; // Chromium 100+, Safari 15.4+, Firefox 97+
+  const firefox115AndSafari17_0Check = supportChecksRelList.supports('modulepreload'); // Firefox 115+, Safari 17.0+, Chromium 66+
+  const safari15_4AndFirefox116Check = Intl.PluralRules && 'selectRange' in Intl.PluralRules.prototype; // Safari 15.4+, Firefox 116+, Chromium 106+
+  const firefox115AndSafari15_4Check = firefox115AndSafari17_0Check || safari15_4AndFirefox116Check;
+  const isBrowserSupported = chromium100Check && firefox115AndSafari15_4Check;
   if (!isBrowserSupported) {
-    return
+    return;
   }
   // In order to lessen maintenance and unnoticed bugs we only support:
   // - Chromium ⩾ 100 — UC Browser 14
@@ -75,7 +74,7 @@ function init() {
   // Browser engines older than that don’t support <script type=module>
   // and thus don’t load instant.page at all.
 
-  const handleVaryAcceptHeader = 'instantVaryAccept' in document.body.dataset || 'Shopify' in window
+  const handleVaryAcceptHeader = 'instantVaryAccept' in document.body.dataset || 'Shopify' in window;
   // The `Vary: Accept` header when received in Chromium 79–109 makes prefetches
   // unusable, as Chromium used to send a different `Accept` header.
   // It’s applied on all Shopify sites by default, as Shopify is very popular
@@ -83,9 +82,12 @@ function init() {
   // `window.Shopify` only exists on “classic” Shopify sites. Those using
   // Hydrogen (Remix SPA) aren’t concerned.
 
-  const chromiumUserAgentIndex = navigator.userAgent.indexOf('Chrome/')
+  const chromiumUserAgentIndex = navigator.userAgent.indexOf('Chrome/');
   if (chromiumUserAgentIndex > -1) {
-    _chromiumMajorVersionInUserAgent = parseInt(navigator.userAgent.substring(chromiumUserAgentIndex + 'Chrome/'.length))
+    // eslint-disable-next-line radix
+    _chromiumMajorVersionInUserAgent = parseInt(
+      navigator.userAgent.substring(chromiumUserAgentIndex + 'Chrome/'.length),
+    );
   }
   // The user agent client hints API is a theoretically more reliable way to
   // get Chromium’s version… but it’s not available in Samsung Internet 20.
@@ -95,7 +97,7 @@ function init() {
   // their regular user agent string, as that maximizes their compatibility.
 
   if (handleVaryAcceptHeader && _chromiumMajorVersionInUserAgent && _chromiumMajorVersionInUserAgent < 110) {
-    return
+    return;
   }
 
   // _speculationRulesType = 'none'
@@ -108,28 +110,28 @@ function init() {
   //   }
   // }
 
-  const useMousedownShortcut = 'instantMousedownShortcut' in document.body.dataset
-  _allowQueryString = 'instantAllowQueryString' in document.body.dataset
-  _allowExternalLinks = 'instantAllowExternalLinks' in document.body.dataset
-  _useWhitelist = 'instantWhitelist' in document.body.dataset
+  const useMousedownShortcut = 'instantMousedownShortcut' in document.body.dataset;
+  _allowQueryString = 'instantAllowQueryString' in document.body.dataset;
+  _allowExternalLinks = 'instantAllowExternalLinks' in document.body.dataset;
+  _useWhitelist = 'instantWhitelist' in document.body.dataset;
 
-  let preloadOnMousedown = false
-  let preloadOnlyOnMousedown = false
-  let preloadWhenVisible = false
+  let preloadOnMousedown = false;
+  let preloadOnlyOnMousedown = false;
+  let preloadWhenVisible = false;
   if ('instantIntensity' in document.body.dataset) {
-    const intensityParameter = document.body.dataset.instantIntensity
+    const intensityParameter = document.body.dataset.instantIntensity;
 
     if (intensityParameter == 'mousedown' && !useMousedownShortcut) {
-      preloadOnMousedown = true
+      preloadOnMousedown = true;
     }
 
     if (intensityParameter == 'mousedown-only' && !useMousedownShortcut) {
-      preloadOnMousedown = true
-      preloadOnlyOnMousedown = true
+      preloadOnMousedown = true;
+      preloadOnlyOnMousedown = true;
     }
 
     if (intensityParameter == 'viewport') {
-      const isOnSmallScreen = document.documentElement.clientWidth * document.documentElement.clientHeight < 450000
+      const isOnSmallScreen = document.documentElement.clientWidth * document.documentElement.clientHeight < 450000;
       // Smartphones are the most likely to have a slow connection, and
       // their small screen size limits the number of links (and thus
       // server load).
@@ -138,133 +140,137 @@ function init() {
       // generally have a decent connection, and a big screen displaying
       // more links that would put more load on the server.
       //
-      // iPhone 14 Pro Max (want): 430×932 = 400 760
+      // iPhone 14 Pro Max (want): 430×932 = 400,760
       // Samsung Galaxy S22 Ultra with display size set to 80% (want):
-      // 450×965 = 434 250
-      // Small tablet (don’t want): 600×960 = 576 000
+      // 450×965 = 434,250
+      // Small tablet (don’t want): 600×960 = 576,000
       // Those number are virtual screen size, the viewport (used for
       // the check above) will be smaller with the browser’s interface.
 
-      const isNavigatorConnectionSaveDataEnabled = navigator.connection && navigator.connection.saveData
-      const isNavigatorConnectionLike2g = navigator.connection && navigator.connection.effectiveType && navigator.connection.effectiveType.includes('2g')
-      const isNavigatorConnectionAdequate = !isNavigatorConnectionSaveDataEnabled && !isNavigatorConnectionLike2g
+      const isNavigatorConnectionSaveDataEnabled = navigator.connection && navigator.connection.saveData;
+      const isNavigatorConnectionLike2g =
+        navigator.connection && navigator.connection.effectiveType && navigator.connection.effectiveType.includes('2g');
+      const isNavigatorConnectionAdequate = !isNavigatorConnectionSaveDataEnabled && !isNavigatorConnectionLike2g;
 
       if (isOnSmallScreen && isNavigatorConnectionAdequate) {
-        preloadWhenVisible = true
+        preloadWhenVisible = true;
       }
     }
 
     if (intensityParameter == 'viewport-all') {
-      preloadWhenVisible = true
+      preloadWhenVisible = true;
     }
 
-    const intensityAsInteger = parseInt(intensityParameter)
+    // eslint-disable-next-line radix
+    const intensityAsInteger = parseInt(intensityParameter);
     if (!isNaN(intensityAsInteger)) {
-      _delayOnHover = intensityAsInteger
+      _delayOnHover = intensityAsInteger;
     }
   }
 
   const eventListenersOptions = {
     capture: true,
     passive: true,
-  }
+  };
 
   if (preloadOnlyOnMousedown) {
-    document.addEventListener('touchstart', touchstartEmptyListener, eventListenersOptions)
-  }
-  else {
-    document.addEventListener('touchstart', touchstartListener, eventListenersOptions)
+    document.addEventListener('touchstart', touchstartEmptyListener, eventListenersOptions);
+  } else {
+    document.addEventListener('touchstart', touchstartListener, eventListenersOptions);
   }
 
   if (!preloadOnMousedown) {
-    document.addEventListener('mouseover', mouseoverListener, eventListenersOptions)
+    document.addEventListener('mouseover', mouseoverListener, eventListenersOptions);
   }
 
   if (preloadOnMousedown) {
-    document.addEventListener('mousedown', mousedownListener, eventListenersOptions)
+    document.addEventListener('mousedown', mousedownListener, eventListenersOptions);
   }
   if (useMousedownShortcut) {
-    document.addEventListener('mousedown', mousedownShortcutListener, eventListenersOptions)
+    document.addEventListener('mousedown', mousedownShortcutListener, eventListenersOptions);
   }
 
   if (preloadWhenVisible) {
-    let requestIdleCallbackOrFallback = window.requestIdleCallback
+    let requestIdleCallbackOrFallback = window.requestIdleCallback;
     // Safari has no support as of 16.3: https://webkit.org/b/164193
     if (!requestIdleCallbackOrFallback) {
       requestIdleCallbackOrFallback = (callback) => {
-        callback()
+        callback();
         // A smarter fallback like setTimeout is not used because devices that
         // may eventually be eligible to a Safari version supporting prefetch
         // will be very powerful.
         // The weakest devices that could be eligible are the 2017 iPad and
         // the 2016 MacBook.
-      }
+      };
     }
 
-    requestIdleCallbackOrFallback(() => {
-      const intersectionObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const anchorElement = entry.target
-            intersectionObserver.unobserve(anchorElement)
-            preload(anchorElement.href)
-          }
-        })
-      })
+    requestIdleCallbackOrFallback(
+      () => {
+        const intersectionObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const anchorElement = entry.target;
+              intersectionObserver.unobserve(anchorElement);
+              preload(anchorElement.href);
+            }
+          });
+        });
 
-      document.querySelectorAll('a').forEach((anchorElement) => {
-        if (isPreloadable(anchorElement)) {
-          intersectionObserver.observe(anchorElement)
-        }
-      })
-    }, {
-      timeout: 1500,
-    })
+        document.querySelectorAll('a').forEach((anchorElement) => {
+          if (isPreloadable(anchorElement)) {
+            intersectionObserver.observe(anchorElement);
+          }
+        });
+      },
+      {
+        timeout: 1500,
+      },
+    );
   }
 }
 
 function touchstartListener(event) {
-  _lastTouchstartEvent = event
+  _lastTouchstartEvent = event;
 
-  const anchorElement = event.target.closest('a')
+  const anchorElement = event.target.closest('a');
 
   if (!isPreloadable(anchorElement)) {
-    return
+    return;
   }
 
-  preload(anchorElement.href, 'high')
+  preload(anchorElement.href, 'high');
 }
 
 function touchstartEmptyListener(event) {
-  _lastTouchstartEvent = event
+  _lastTouchstartEvent = event;
 }
 
 function mouseoverListener(event) {
   if (isEventLikelyTriggeredByTouch(event)) {
     // This avoids uselessly adding a mouseout event listener and setting a timer.
-    return
+    return;
   }
 
   if (!('closest' in event.target)) {
-    return
+    return;
     // Without this check sometimes an error “event.target.closest is not a function” is thrown, for unknown reasons
     // That error denotes that `event.target` isn’t undefined. My best guess is that it’s the Document.
     //
     // Details could be gleaned from throwing such an error:
     //throw new TypeError(`instant.page non-element event target: timeStamp=${~~event.timeStamp}, type=${event.type}, typeof=${typeof event.target}, nodeType=${event.target.nodeType}, nodeName=${event.target.nodeName}, viewport=${innerWidth}x${innerHeight}, coords=${event.clientX}x${event.clientY}, scroll=${scrollX}x${scrollY}`)
   }
-  const anchorElement = event.target.closest('a')
+  const anchorElement = event.target.closest('a');
 
   if (!isPreloadable(anchorElement)) {
-    return
+    return;
   }
 
-  anchorElement.addEventListener('mouseout', mouseoutListener, { passive: true })
+  anchorElement.addEventListener('mouseout', mouseoutListener, { passive: true });
 
   _mouseoverTimer = setTimeout(() => {
-    preload(anchorElement.href, 'high')
-    _mouseoverTimer = null
-  }, _delayOnHover)
+    preload(anchorElement.href, 'high');
+    _mouseoverTimer = null;
+  }, _delayOnHover);
 }
 
 function mousedownListener(event) {
@@ -274,26 +280,26 @@ function mousedownListener(event) {
     //
     // (When preloading on touchstart, instructions below this block would
     // have no effect.)
-    return
+    return;
   }
 
-  const anchorElement = event.target.closest('a')
+  const anchorElement = event.target.closest('a');
 
   if (!isPreloadable(anchorElement)) {
-    return
+    return;
   }
 
-  preload(anchorElement.href, 'high')
+  preload(anchorElement.href, 'high');
 }
 
 function mouseoutListener(event) {
   if (event.relatedTarget && event.target.closest('a') == event.relatedTarget.closest('a')) {
-    return
+    return;
   }
 
   if (_mouseoverTimer) {
-    clearTimeout(_mouseoverTimer)
-    _mouseoverTimer = null
+    clearTimeout(_mouseoverTimer);
+    _mouseoverTimer = null;
   }
 }
 
@@ -303,29 +309,33 @@ function mousedownShortcutListener(event) {
     // combined with other parties’ JavaScript code, we don’t want it to run
     // at all on touch devices, even though mousedown and click are triggered
     // at almost the same time on touch.
-    return
+    return;
   }
 
-  const anchorElement = event.target.closest('a')
+  const anchorElement = event.target.closest('a');
 
   if (event.which > 1 || event.metaKey || event.ctrlKey) {
-    return
+    return;
   }
 
   if (!anchorElement) {
-    return
+    return;
   }
 
-  anchorElement.addEventListener('click', (event) => {
-    if (event.detail == 1337) {
-      return
-    }
+  anchorElement.addEventListener(
+    'click',
+    (event) => {
+      if (event.detail == 1337) {
+        return;
+      }
 
-    event.preventDefault()
-  }, { capture: true, passive: false, once: true })
+      event.preventDefault();
+    },
+    { capture: true, passive: false, once: true },
+  );
 
-  const customEvent = new MouseEvent('click', { view: window, bubbles: true, cancelable: false, detail: 1337 })
-  anchorElement.dispatchEvent(customEvent)
+  const customEvent = new MouseEvent('click', { view: window, bubbles: true, cancelable: false, detail: 1337 });
+  anchorElement.dispatchEvent(customEvent);
 }
 
 function isEventLikelyTriggeredByTouch(event) {
@@ -334,23 +344,23 @@ function isEventLikelyTriggeredByTouch(event) {
   // This function checks if it’s likely that we’re dealing with such an event.
 
   if (!_lastTouchstartEvent || !event) {
-    return false
+    return false;
   }
 
   if (event.target != _lastTouchstartEvent.target) {
-    return false
+    return false;
   }
 
-  const now = event.timeStamp
+  const now = event.timeStamp;
   // Chromium (tested Chrome 95 and 122 on Android) sometimes uses the same
   // event.timeStamp value in touchstart, mouseover, and mousedown.
   // Testable in test/extras/delay-not-considered-touch.html
   // This is okay for our purpose: two equivalent timestamps will be less
   // than the max duration, which means they’re related events.
   // TODO: fill/find Chromium bug
-  const durationBetweenLastTouchstartAndNow = now - _lastTouchstartEvent.timeStamp
+  const durationBetweenLastTouchstartAndNow = now - _lastTouchstartEvent.timeStamp;
 
-  const MAX_DURATION_TO_BE_CONSIDERED_TRIGGERED_BY_TOUCHSTART = 2500
+  const MAX_DURATION_TO_BE_CONSIDERED_TRIGGERED_BY_TOUCHSTART = 2500;
   // How long after a touchstart event can a simulated mouseover/mousedown event fire?
   // /test/extras/delay-not-considered-touch.html tries to answer that question.
   // I saw up to 1450 ms on an overwhelmed Samsung Galaxy S2.
@@ -361,7 +371,7 @@ function isEventLikelyTriggeredByTouch(event) {
   // False positives are okay, as this function is only used to decide to abort handling mouseover/mousedown/mousedownShortcut.
   // False negatives could lead to unforeseen state, particularly in mousedownShortcutListener.
 
-  return durationBetweenLastTouchstartAndNow < MAX_DURATION_TO_BE_CONSIDERED_TRIGGERED_BY_TOUCHSTART
+  return durationBetweenLastTouchstartAndNow < MAX_DURATION_TO_BE_CONSIDERED_TRIGGERED_BY_TOUCHSTART;
 
   // TODO: Investigate if pointer events could be used.
   // https://developer.mozilla.org/en-US/docs/Web/API/PointerEvent/pointerType
@@ -381,47 +391,47 @@ function isEventLikelyTriggeredByTouch(event) {
 
 function isPreloadable(anchorElement) {
   if (!anchorElement || !anchorElement.href) {
-    return
+    return;
   }
 
   if (_useWhitelist && !('instant' in anchorElement.dataset)) {
-    return
+    return;
   }
 
   if (anchorElement.origin != location.origin) {
-    let allowed = _allowExternalLinks || 'instant' in anchorElement.dataset
+    let allowed = _allowExternalLinks || 'instant' in anchorElement.dataset;
     if (!allowed || !_chromiumMajorVersionInUserAgent) {
       // Chromium-only: see comment on “restrictive prefetch” and “cross-site speculation rules prefetch”
-      return
+      return;
     }
   }
 
   if (!['http:', 'https:'].includes(anchorElement.protocol)) {
-    return
+    return;
   }
 
   if (anchorElement.protocol == 'http:' && location.protocol == 'https:') {
-    return
+    return;
   }
 
   if (!_allowQueryString && anchorElement.search && !('instant' in anchorElement.dataset)) {
-    return
+    return;
   }
 
   if (anchorElement.hash && anchorElement.pathname + anchorElement.search == location.pathname + location.search) {
-    return
+    return;
   }
 
   if ('noInstant' in anchorElement.dataset) {
-    return
+    return;
   }
 
-  return true
+  return true;
 }
 
 async function preload(url, fetchPriority = 'auto') {
   if (_preloadedList.has(url)) {
-    return
+    return;
   }
 
   // If the URL is to a page which preact router recognizes, then
@@ -434,9 +444,7 @@ async function preload(url, fetchPriority = 'auto') {
   }
   if (!urlPath) return;
 
-  const route = routes.find(
-    ({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} })
-  );
+  const route = routes.find(({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} }));
   if (!route || route.default || !route.Component.chunkPath) return;
 
   try {
@@ -449,21 +457,19 @@ async function preload(url, fetchPriority = 'auto') {
   const chunkName = route.Component.chunkPath.split('/').pop();
   const entry = Object.values(manifest).find(({ file }) => file.endsWith(`/${chunkName}`));
   (entry.imports ?? [])
-    .filter(file => file && file !== 'index.html' && manifest[file]?.file)
-    .forEach(file => preloadUsingLinkElement(
-      `${publicPath}/${manifest[file]?.file}`,
-      fetchPriority,
-      'script',
-      'modulepreload',
-      'anonymous'
-    ));
-  (entry.css ?? [])
-    .forEach(file => preloadUsingLinkElement(
-      `${publicPath}/${file}`,
-      fetchPriority,
-      'style',
-      'anonymous'
-    ));
+    .filter((file) => file && file !== 'index.html' && manifest[file]?.file)
+    .forEach((file) =>
+      preloadUsingLinkElement(
+        `${publicPath}/${manifest[file]?.file}`,
+        fetchPriority,
+        'script',
+        'modulepreload',
+        'anonymous',
+      ),
+    );
+  (entry.css ?? []).forEach((file) =>
+    preloadUsingLinkElement(`${publicPath}/${file}`, fetchPriority, 'style', 'anonymous'),
+  );
 
   // if (_speculationRulesType != 'none') {
   //   preloadUsingSpeculationRules(url)
@@ -471,7 +477,7 @@ async function preload(url, fetchPriority = 'auto') {
   //   preloadUsingLinkElement(url, fetchPriority)
   // }
 
-  _preloadedList.add(url)
+  _preloadedList.add(url);
 }
 
 // function preloadUsingSpeculationRules(url) {
@@ -502,11 +508,11 @@ function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', r
     // This try catch exists to be defensive against invalid characters in URL?
   }
 
-  const linkElement = document.createElement('link')
-  linkElement.rel = rel
-  linkElement.href = url
+  const linkElement = document.createElement('link');
+  linkElement.rel = rel;
+  linkElement.href = url;
 
-  linkElement.fetchPriority = fetchPriority
+  linkElement.fetchPriority = fetchPriority;
   // By default, a prefetch is loaded with a low priority.
   // When there’s a fair chance that this prefetch is going to be used in the
   // near term (= after a touch/mouse event), giving it a high priority helps
@@ -517,7 +523,7 @@ function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', r
   // prefetches happening once the initial page is sufficiently loaded,
   // this theft of bandwidth should rarely be detrimental.
 
-  linkElement.as = as
+  linkElement.as = as;
   // as=document is Chromium-only and allows cross-origin prefetches to be
   // usable for navigation. They call it “restrictive prefetch” and intend
   // to remove it: https://crbug.com/1352371
@@ -533,5 +539,5 @@ function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', r
     linkElement.crossOrigin = crossOrigin;
   }
 
-  document.head.appendChild(linkElement)
+  document.head.appendChild(linkElement);
 }
