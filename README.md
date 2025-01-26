@@ -85,6 +85,16 @@ Path redirects can be configured in `src/routes/redirects.js`
 
 Similarly for types, there is a shorthand alias `@` to the types/ directory. e.g. `import('@/Route').PageComponent`
 
+## Preloading on hover
+
+I've forked [instant.page](https://instant.page) to work with preact-iso and vite. If you want to change the behavior of the preloading, then check their documented [intensity options](https://instant.page/intensity).
+
+You can only test this on prod build (as vite doesn't provide a manifest on dev build):
+```sh
+npm run build
+npm run prod
+```
+
 ## Preloading fetch() calls
 
 Check example at [`src/routes/routes.js`](https://github.com/Munawwar/preact-spa-template/blob/preload/src/routes/routes.js).
