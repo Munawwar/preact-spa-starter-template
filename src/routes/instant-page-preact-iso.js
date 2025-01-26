@@ -425,49 +425,50 @@ async function preload(url, fetchPriority = 'auto') {
   }
 
   // If the URL is to a page which preact router recognizes, then
-  // we need to preload the CSS and JS instead.
+  // we need to preload the CSS and JS.
   let urlPath;
   try {
     urlPath = new URL(url, window.location.origin).pathname;
   } catch (err) {
     // ignore
   }
-  if (urlPath) {
-    const route = routes.find(
-      ({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} })
-    );
-    if (route && !route.default && route.Component.chunkPath) {
-      try {
-        if (!manifest) manifest = await manifestPromise;
-      } catch (error) {
-        return;
-      }
-      const chunkName = route.Component.chunkPath.split('/').pop();
-      const entry = Object.values(manifest).find(({ file }) => file.endsWith(`/${chunkName}`));
-      (entry.imports ?? [])
-        .filter(file => file && file !== 'index.html' && manifest[file]?.file)
-        .forEach(file => preloadUsingLinkElement(
-          `${publicPath}/${manifest[file]?.file}`,
-          fetchPriority,
-          'script',
-          'modulepreload',
-          'anonymous'
-        ));
-      (entry.css ?? [])
-        .forEach(file => preloadUsingLinkElement(
-          `${publicPath}/${file}`,
-          fetchPriority,
-          'style',
-          'anonymous'
-        ));
-      return;
-    }
+  if (!urlPath) return;
+
+  const route = routes.find(
+    ({ path: pattern }) => preactIsoUrlPatternMatch(urlPath, pattern, { params: {} })
+  );
+  if (!route || route.default || !route.Component.chunkPath) return;
+
+  try {
+    if (!manifest) manifest = await manifestPromise;
+  } catch (error) {
+    return;
   }
+
+  // assuming hash of file is unique enough to match across any directory.
+  const chunkName = route.Component.chunkPath.split('/').pop();
+  const entry = Object.values(manifest).find(({ file }) => file.endsWith(`/${chunkName}`));
+  (entry.imports ?? [])
+    .filter(file => file && file !== 'index.html' && manifest[file]?.file)
+    .forEach(file => preloadUsingLinkElement(
+      `${publicPath}/${manifest[file]?.file}`,
+      fetchPriority,
+      'script',
+      'modulepreload',
+      'anonymous'
+    ));
+  (entry.css ?? [])
+    .forEach(file => preloadUsingLinkElement(
+      `${publicPath}/${file}`,
+      fetchPriority,
+      'style',
+      'anonymous'
+    ));
 
   // if (_speculationRulesType != 'none') {
   //   preloadUsingSpeculationRules(url)
   // } else {
-  preloadUsingLinkElement(url, fetchPriority)
+  //   preloadUsingLinkElement(url, fetchPriority)
   // }
 
   _preloadedList.add(url)
@@ -492,11 +493,11 @@ async function preload(url, fetchPriority = 'auto') {
 // }
 
 function preloadUsingLinkElement(url, fetchPriority = 'auto', as = 'document', rel = 'prefetch', crossOrigin) {
-  // Remove existing preload links with same href
+  // Exit if resource was already preloaded by server head tag.
   try {
-    document.head
-      .querySelectorAll(`link[rel="${rel}"][href="${url}"]`)
-      .forEach(link => link.remove());
+    if (document.head.querySelector(`link[rel="${rel}"][href="${url}"]`)) {
+      return;
+    }
   } catch (err) {
     // This try catch exists to be defensive against invalid characters in URL?
   }
