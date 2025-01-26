@@ -179,6 +179,7 @@ fastify.all('*', async (req, reply) => {
       template = fs.readFileSync(pathModule.resolve(rootDir, 'dist/index.html'), 'utf-8')
       const origin = `${req.protocol}://${req.host}`;
       const { pathname } = new URL(url, origin);
+      /** @type {{ [name: string]: string }} */
       let params = {};
       const found = /** @type {ManifestRoute} */ (
         clientSideManagedRoutes.find((route) => {
@@ -196,7 +197,6 @@ fastify.all('*', async (req, reply) => {
         return;
       }
       const {
-        title,
         Component: entryFileName,
         preload,
         getPrefetchUrls: getPrefetchUrlsFuncCode,
@@ -204,6 +204,11 @@ fastify.all('*', async (req, reply) => {
         routeId,
         path,
       } = found;
+      const title = typeof found.title === 'function'
+        ? found.title({ path, route: found, default: isDefault })
+        : typeof found.title === 'string'
+          ? found.title.replace(/:([^\b]+)/g, (m, name) => params?.[name] ?? m)
+          : '';
       const manifestEntry = viteProdManifest[entryFileName];
       const preloadJS = [entryFileName]
         .concat(manifestEntry?.imports || [])

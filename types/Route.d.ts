@@ -48,6 +48,11 @@ export type PageComponentProps<T extends string> = PageComponentBaseProps<T> & {
 };
 
 export type Route<T extends string> = RouteStaticProps<T> & {
+  /**
+   * Title can have placeholders for URL pattern params that begins with a colon `:`
+   * (e.g. `Order Summary (:orderId)`).
+   * Or use a JS function, but it cannot be re-used in a non-JS backend.
+   */
   title: string | ((props: object) => string);
   Component: (props: PageComponentProps<T>) => import('preact/jsx-runtime').JSX.Element | null;
   /**
