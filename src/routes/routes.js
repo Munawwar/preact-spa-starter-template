@@ -38,7 +38,7 @@ const routes = [
   }),
   route('/user/:id', {
     routeId: 'user',
-    title: 'User',
+    title: 'User (:id)',
     Component: lazy(() => import('./User')),
     preload: [{
       as: 'fetch',

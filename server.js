@@ -207,7 +207,7 @@ fastify.all('*', async (req, reply) => {
       const title = typeof found.title === 'function'
         ? found.title({ path, route: found, default: isDefault })
         : typeof found.title === 'string'
-          ? found.title.replace(/:([^\b]+)/g, (m, name) => params?.[name] ?? m)
+          ? found.title.replace(/:([\w]+)/g, (m, name) => params?.[name] ?? m)
           : '';
       const manifestEntry = viteProdManifest[entryFileName];
       const preloadJS = [entryFileName]

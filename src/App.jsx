@@ -45,7 +45,7 @@ const RouteComponent = (props) => {
   const title =
     typeof route.title === 'function'
       ? route.title(props)
-      : route.title.replace(/:([^\b]+)/g, (m, name) => params?.[name] ?? m);
+      : route.title.replace(/:([\w]+)/g, (m, name) => params?.[name] ?? m);
   useEffect(() => {
     document.title = ['My App', title].join(' | ');
   }, []);

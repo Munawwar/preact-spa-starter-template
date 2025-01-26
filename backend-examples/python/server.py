@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from flask import Flask, send_from_directory, request, Response
 from werkzeug.middleware.shared_data import SharedDataMiddleware
 
@@ -66,7 +67,7 @@ def catch_all(path):
         ):
             return 'Not Found', 404
 
-        title = found.get('title', '')
+        title = re.sub(r':(\w+)', lambda m: params.get(m.group(1), m.group(0)), found.get('title', '')) if isinstance(found.get('title'), str) else ''
         entry_file_name = found.get('Component', '')
         preload = found.get('preload', [])
         get_prefetch_urls_func_code = found.get('getPrefetchUrls')
@@ -75,9 +76,13 @@ def catch_all(path):
         path = found.get('path')
 
         manifest_entry = vite_prod_manifest.get(entry_file_name, {})
-        preload_js = [f"{public_url_path}/{file}" for file in 
-                    (manifest_entry.get('imports', []) + [manifest_entry.get('file')])
-                    if file and not file.endswith('.html')]
+        preload_js = [entry_file_name] + \
+            (manifest_entry.get('imports', []) if manifest_entry else [])
+        preload_js = [
+            f"{public_url_path}/{vite_prod_manifest[file]['file']}"
+            for file in preload_js
+            if file and vite_prod_manifest.get(file, {}).get('file') and not file.endswith('.html')
+        ]
         preload_css = [f"{public_url_path}/{file}" for file in manifest_entry.get('css', [])]
 
         head_tags = '\n'.join([

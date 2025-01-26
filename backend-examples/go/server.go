@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"regexp"
 )
 
 type Route struct {
@@ -114,17 +115,22 @@ func main() {
 		}
 
 		preloadJS := []string{}
-		if imports, ok := manifestEntry["imports"].([]interface{}); ok {
-			for _, imp := range imports {
-				if s, ok := imp.(string); ok && !strings.HasSuffix(s, ".html") {
-					preloadJS = append(preloadJS, fmt.Sprintf("/public/%s", s))
-				}
-			}
-		}
 		if file, ok := manifestEntry["file"].(string); ok {
 			preloadJS = append(preloadJS, fmt.Sprintf("/public/%s", file))
 		}
-
+		if imports, ok := manifestEntry["imports"].([]interface{}); ok {
+			for _, imp := range imports {
+				if s, ok := imp.(string); ok {
+					if !strings.HasSuffix(s, ".html") {
+						if manifestForImport, ok := viteProdManifest[s].(map[string]interface{}); ok {
+							if importFile, ok := manifestForImport["file"].(string); ok {
+								preloadJS = append(preloadJS, fmt.Sprintf("/public/%s", importFile))
+							}
+						}
+					}
+				}
+			}
+		}
 		preloadCSS := []string{}
 		if css, ok := manifestEntry["css"].([]interface{}); ok {
 			for _, c := range css {
@@ -137,7 +143,16 @@ func main() {
 		headContent := []string{}
 		endHeadContent := []string{}
 		if found.Title != "" {
-			headContent = append(headContent, fmt.Sprintf("<title>%s</title>", found.Title))
+			title := found.Title
+			re := regexp.MustCompile(`:([\w]+)`)
+			title = re.ReplaceAllStringFunc(title, func(m string) string {
+				name := m[1:] // Remove the leading ":"
+				if val, ok := params.Params[name]; ok {
+					return val
+				}
+				return m
+			})
+			headContent = append(headContent, fmt.Sprintf("<title>%s</title>", title))
 		}
 		for _, js := range preloadJS {
 			headContent = append(headContent, fmt.Sprintf(`  <link rel="modulepreload" crossorigin href="%s">`, js))

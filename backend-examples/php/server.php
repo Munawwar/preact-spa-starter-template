@@ -80,7 +80,11 @@ if ($found === $defaultRoute && (
     exit;
 }
 
-$title = $found['title'] ?? '';
+$title = is_string($found['title'] ?? null) 
+    ? preg_replace_callback('/:([\w]+)/', function($matches) use ($params) {
+        return $params['params']->{$matches[1]} ?? $matches[0];
+    }, $found['title'])
+    : '';
 $entryFileName = $found['Component'] ?? '';
 $preload = $found['preload'] ?? [];
 $getPrefetchUrlsFuncCode = $found['getPrefetchUrls'] ?? null;
@@ -89,13 +93,19 @@ $routeId = $found['routeId'] ?? '';
 $path = $found['path'] ?? '';
 
 $manifestEntry = $viteProdManifest[$entryFileName] ?? [];
-$preloadJS = array_filter(
-    array_merge($manifestEntry['imports'] ?? [], [$manifestEntry['file'] ?? null]),
-    function($file) { return $file && !ends_with($file, '.html'); }
+$preloadJS = array_map(
+    function($file) use ($publicUrlPath, $viteProdManifest) {
+        return "$publicUrlPath/{$viteProdManifest[$file]['file']}";
+    },
+    array_filter(
+        array_merge([$entryFileName], $manifestEntry['imports'] ?? []),
+        function($file) use ($viteProdManifest) {
+            return $file 
+                && isset($viteProdManifest[$file]['file'])
+                && !ends_with($file, '.html');
+        }
+    )
 );
-$preloadJS = array_map(function($file) use ($publicUrlPath) {
-    return "$publicUrlPath/$file";
-}, $preloadJS);
 
 $preloadCSS = array_map(function($file) use ($publicUrlPath) {
     return "$publicUrlPath/$file";

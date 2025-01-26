@@ -48,7 +48,7 @@ get '/*' do
     halt 404, 'Not Found'
   end
 
-  title = found['title']
+  title = found['title'].is_a?(String) ? found['title'].gsub(/:([\w]+)/) { |m| params[$1] || m } : ''
   entry_file_name = found['Component']
   preload = found['preload']
   get_prefetch_urls_func_code = found['getPrefetchUrls']
@@ -58,11 +58,14 @@ get '/*' do
 
   manifest_entry = vite_prod_manifest[entry_file_name] || {}
 
-  preload_js = (manifest_entry['imports']&.dup || [])
-    .concat([manifest_entry['file']])
-    .compact
-    .reject { |file| file.end_with?('.html') }
-    .map { |file| "/public/#{file}" }
+  preload_js = [entry_file_name]
+    .concat(manifest_entry&.dig('imports') || [])
+    .select { |file| 
+      file && 
+      vite_prod_manifest[file]&.dig('file') && 
+      !file.end_with?('.html')
+    }
+    .map { |file| "/public/#{vite_prod_manifest[file]['file']}" }
 
   preload_css = (manifest_entry['css']&.dup || [])
     .map { |file| "/public/#{file}" }
